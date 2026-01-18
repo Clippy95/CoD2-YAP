@@ -1,6 +1,7 @@
 #pragma once
 #include <helper.hpp>
 #include "game.h"
+#include "GMath.h"
 enum dvarFlags_e : uint16_t
 {
     DVAR_NOFLAG = 0x0,
@@ -60,8 +61,8 @@ typedef struct
         bool boolean;
         int integer;
         float decimal;
-        float* vec2;
-        float* vec3;
+        vector2* vec2;
+        vector3* vec3;
         float* vec4;
         const char* string;
         unsigned char color[4];
@@ -86,5 +87,8 @@ typedef struct dvar_s
 namespace dvars {
 
     WEAK game::symbol<dvar_s*(const char* name, int value, int min, int max, uint16_t flags)> Dvar_RegisterInt{ 0x431FC0 };
+    WEAK game::symbol<dvar_s* (const char* name, float value, float min, float max, uint16_t flags)> Dvar_RegisterFloat{ 0x432020 };
+    WEAK game::symbol<dvar_s* (const char* name, float x, float y,float min, float max, uint16_t flags)> Dvar_RegisterVec2{ 0x4320A0 };
 
+    WEAK game::symbol<dvar_s* (const char* name)> Dvar_FindVar{ 0x431260 };
 }

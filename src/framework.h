@@ -31,5 +31,6 @@ inline Ret thiscall_call(uintptr_t addr, Args... args) {
 }
 #define BASE_GFX 0x10000000
 uintptr_t gfx(uintptr_t sp, uintptr_t mp = 0);
+uintptr_t exe(uintptr_t sp);
 
 #define MOD_NAME "CoD2-YAP"

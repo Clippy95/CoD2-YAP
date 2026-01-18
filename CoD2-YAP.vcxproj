@@ -54,6 +54,7 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.props" />
   </ImportGroup>
   <ImportGroup Label="Shared">
   </ImportGroup>
@@ -120,6 +121,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
+      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
     <PostBuildEvent>
       <Command>if defined COD2_OUTPUT_PATH (
@@ -164,6 +166,7 @@
     <ClInclude Include="src\dvars.h" />
     <ClInclude Include="src\framework.h" />
     <ClInclude Include="src\game.h" />
+    <ClInclude Include="src\GMath.h" />
     <ClInclude Include="src\hooking.h" />
     <ClInclude Include="src\include\buildnumber.h" />
     <ClInclude Include="src\include\GL\eglew.h" />
@@ -200,9 +203,12 @@
     <ClCompile Include="src\sprint.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="src\include\fpu_ops_x86.asm" />
+    <MASM Include="src\include\fpu_ops_x86.asm">
+      <FileType>Document</FileType>
+    </MASM>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.targets" />
   </ImportGroup>
 </Project>

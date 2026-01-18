@@ -72,6 +72,9 @@
     <ClInclude Include="src\game.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\GMath.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\dllmain.cpp">
@@ -109,8 +112,8 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="src\include\fpu_ops_x86.asm">
+    <MASM Include="src\include\fpu_ops_x86.asm">
       <Filter>Source Files</Filter>
-    </None>
+    </MASM>
   </ItemGroup>
 </Project>

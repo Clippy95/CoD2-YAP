@@ -9,6 +9,10 @@
 #include <safetyhook.hpp>
 #include "hooking.h"
 
+uintptr_t exe(uintptr_t sp) {
+    return sp;
+}
+
 LPVOID GetModuleEndAddress(HMODULE hModule) {
     if (hModule == NULL) {
         return NULL;
