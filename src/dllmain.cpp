@@ -175,7 +175,7 @@ void Init() {
     LoadLibraryD = safetyhook::create_inline(LoadLibraryA, LoadLibraryHook);
     component_loader::post_start();
     OpenConsoleAndRedirectIO();
-
+    Memory::VP::InterceptCall(0x4A3999, CG_init_ptr, CG_Init_stub);
 
 
 }

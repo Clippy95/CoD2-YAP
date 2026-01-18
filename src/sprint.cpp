@@ -31,25 +31,79 @@ namespace sprint {
 		std::string weaponName;
 		float vSprintBob[2];
 		float sprintSpeedScale;
-		std::optional<std::array<float, 3>> vSprintRot;
-		std::optional<std::array<float, 3>> vSprintMove;
+		float vSprintRot[3];
+		float vSprintMove[3];
+		float vSprintOfs[3];
 
-		eWeaponDef() : weaponName(""), vSprintBob{ 0.0f, 0.0f }, sprintSpeedScale{ 1.f }, vSprintRot{}, vSprintMove{} {}
+		eWeaponDef() :
+			weaponName(""),
+			vSprintBob{ 0.0f, 0.0f },
+			sprintSpeedScale{ 1.0f },
+			vSprintRot{ 0.0f, 0.0f, 0.0f },
+			vSprintMove{ 0.0f, 0.0f, 0.0f },
+			vSprintOfs{ 0.0f, 0.0f, 0.0f } {
+		}
 	};
 
 	std::unordered_map<std::string, eWeaponDef> g_eWeaponDefs;
 
+	dvar_s* yap_eweapon_semi_match;
+
 	const eWeaponDef* GetEWeapon(const char* weaponName) {
 		if (!weaponName || g_eWeaponDefs.empty()) return nullptr;
-		auto it = g_eWeaponDefs.find(weaponName);
-		if (it != g_eWeaponDefs.end()) {
-			return &it->second;
+
+		// Semi-match with contains (case-sensitive)
+		if (yap_eweapon_semi_match && yap_eweapon_semi_match->value.integer) {
+			std::string searchName = weaponName;
+
+			for (const auto& [key, value] : g_eWeaponDefs) {
+				// Check if either the key contains searchName or searchName contains key
+				if (key.find(searchName) != std::string::npos ||
+					searchName.find(key) != std::string::npos) {
+					return &value;
+				}
+			}
+		}
+		else {
+			// Exact match (case-sensitive)
+			auto it = g_eWeaponDefs.find(weaponName);
+			if (it != g_eWeaponDefs.end()) {
+				return &it->second;
+			}
 		}
 
 		return nullptr;
 	}
 
+	uintptr_t GetCurrentWeapon() {
+		uint32_t index = 0;
+		uint32_t* unk1 = (uint32_t*)0xF708F4;
+
+		if ((*unk1 & 0x20000) != 0) {
+			index = cdecl_call<uint32_t>(0x4DC660);
+		}
+		else {
+			index = *(uint32_t*)0xF70994;
+
+			if ((*unk1 & 0x10) == 0) {
+				index = *(uint32_t*)0xF70998;
+			}
+
+		}
+
+		uintptr_t* ptrs = (uintptr_t*)0x01C64548;
+
+		return ptrs[index];
+
+	}
+
 	const char* GetCurrentWeaponName() {
+		if (GetCurrentWeapon()) {
+			printf("name %s\n", *(const char**)GetCurrentWeapon());
+			return *(const char**)(GetCurrentWeapon());
+		}
+
+
 		return NULL;
 	}
 
@@ -62,14 +116,12 @@ namespace sprint {
 			Com_Printf("eWeapons directory not found: %s\n", eWeaponsDir.string().c_str());
 			return;
 		}
-
 		Com_Printf("Loading eWeapons from: %s\n", eWeaponsDir.string().c_str());
 
 		for (const auto& entry : std::filesystem::directory_iterator(eWeaponsDir)) {
 			if (entry.path().extension() != ".json") continue;
 
 			std::string weaponName = entry.path().stem().string();
-
 			if (!overwrite && g_eWeaponDefs.find(weaponName) != g_eWeaponDefs.end()) {
 				Com_Printf("Skipping '%s' (already loaded with higher priority)\n", weaponName.c_str());
 				continue;
@@ -85,41 +137,37 @@ namespace sprint {
 				if (j.contains("sprintBobH")) {
 					weaponDef.vSprintBob[0] = j["sprintBobH"].get<float>();
 				}
-
 				if (j.contains("sprintBobV")) {
 					weaponDef.vSprintBob[1] = j["sprintBobV"].get<float>();
 				}
-
 				if (j.contains("sprintSpeedScale")) {
 					weaponDef.sprintSpeedScale = j["sprintSpeedScale"].get<float>();
 				}
 
 				if (j.contains("SprintRot") && j["SprintRot"].is_array() && j["SprintRot"].size() == 3) {
-					weaponDef.vSprintRot = std::array<float, 3>{
-						j["SprintRot"][0].get<float>(),
-						j["SprintRot"][1].get<float>(),
-						j["SprintRot"][2].get<float>()
-					};
+					weaponDef.vSprintRot[0] = j["SprintRot"][0].get<float>();
+					weaponDef.vSprintRot[1] = j["SprintRot"][1].get<float>();
+					weaponDef.vSprintRot[2] = j["SprintRot"][2].get<float>();
 				}
 
-
-
 				if (j.contains("SprintMove") && j["SprintMove"].is_array() && j["SprintMove"].size() == 3) {
-					weaponDef.vSprintMove = std::array<float, 3>{
-						j["SprintMove"][0].get<float>(),
-						j["SprintMove"][1].get<float>(),
-						j["SprintMove"][2].get<float>()
-					};
+					weaponDef.vSprintMove[0] = j["SprintMove"][0].get<float>();
+					weaponDef.vSprintMove[1] = j["SprintMove"][1].get<float>();
+					weaponDef.vSprintMove[2] = j["SprintMove"][2].get<float>();
+				}
+
+				if (j.contains("SprintOfs") && j["SprintOfs"].is_array() && j["SprintOfs"].size() == 3) {
+					weaponDef.vSprintOfs[0] = j["SprintOfs"][0].get<float>();
+					weaponDef.vSprintOfs[1] = j["SprintOfs"][1].get<float>();
+					weaponDef.vSprintOfs[2] = j["SprintOfs"][2].get<float>();
 				}
 
 				g_eWeaponDefs[weaponName] = weaponDef;
-
-				Com_Printf("Loaded eWeapon '%s' - sprintBobH: %.3f, sprintBobV: %.3f, sprintSpeedScale %.3f\n",
+				Com_Printf("Loaded eWeapon '%s' - sprintBobH: %.3f, sprintBobV: %.3f, sprintSpeedScale: %.3f\n",
 					weaponName.c_str(),
 					weaponDef.vSprintBob[0],
 					weaponDef.vSprintBob[1],
 					weaponDef.sprintSpeedScale);
-
 			}
 			catch (const std::exception& e) {
 				Com_Printf("Failed to parse %s: %s\n",
@@ -223,14 +271,87 @@ namespace sprint {
 
 	dvar_s* yap_sprint_internal_yet;
 
+	dvar_s* yap_player_sprintSpeedScale;
+
+	// Fake dvars for eWeapon values
 	dvar_s yap_sprint_gun_rot_p_fake;
 	dvar_s yap_sprint_gun_rot_r_fake;
 	dvar_s yap_sprint_gun_rot_y_fake;
+	dvar_s yap_sprint_gun_mov_f_fake;
+	dvar_s yap_sprint_gun_mov_r_fake;
+	dvar_s yap_sprint_gun_mov_u_fake;
+	dvar_s yap_sprint_gun_ofs_f_fake;
+	dvar_s yap_sprint_gun_ofs_r_fake;
+	dvar_s yap_sprint_gun_ofs_u_fake;
+	dvar_s yap_sprint_gun_bob_horz_fake;
+	dvar_s yap_sprint_gun_bob_vert_fake;
+
+	// Pointers to dvars (these will point to either real or fake)
+	dvar_s* yap_sprint_gun_rot_p_ptr;
+	dvar_s* yap_sprint_gun_rot_r_ptr;
+	dvar_s* yap_sprint_gun_rot_y_ptr;
+	dvar_s* yap_sprint_gun_mov_f_ptr;
+	dvar_s* yap_sprint_gun_mov_r_ptr;
+	dvar_s* yap_sprint_gun_mov_u_ptr;
+	dvar_s* yap_sprint_gun_ofs_f_ptr;
+	dvar_s* yap_sprint_gun_ofs_r_ptr;
+	dvar_s* yap_sprint_gun_ofs_u_ptr;
+	dvar_s* yap_sprint_gun_bob_horz_ptr;
+	dvar_s* yap_sprint_gun_bob_vert_ptr;
 
 
 	dvar_s* yap_sprint_trying;
 
 	dvar_s* yap_sprint_is_sprinting;
+
+	dvar_s* yay_sprint_gun_always_read_real;
+
+	SAFETYHOOK_NOINLINE void update_sprint_gun_dvars() {
+		if (yay_sprint_gun_always_read_real->value.integer == 0 && GetCurrentEWeapon()) {
+			auto eweapon = GetCurrentEWeapon();
+
+			// Set fake dvar values from eWeapon
+			yap_sprint_gun_rot_p_fake.value.decimal = eweapon->vSprintRot[0];
+			yap_sprint_gun_rot_r_fake.value.decimal = eweapon->vSprintRot[2];
+			yap_sprint_gun_rot_y_fake.value.decimal = eweapon->vSprintRot[1];
+			yap_sprint_gun_mov_f_fake.value.decimal = eweapon->vSprintMove[0];
+			yap_sprint_gun_mov_r_fake.value.decimal = eweapon->vSprintMove[1];
+			yap_sprint_gun_mov_u_fake.value.decimal = eweapon->vSprintMove[2];
+			//yap_sprint_gun_ofs_f_fake.value.decimal = eweapon->vSprintMove[0];
+			//yap_sprint_gun_ofs_r_fake.value.decimal = eweapon->vSprintMove[1];
+			//yap_sprint_gun_ofs_u_fake.value.decimal = eweapon->vSprintMove[2];
+			yap_sprint_gun_bob_horz_fake.value.decimal = eweapon->vSprintBob[0];
+			yap_sprint_gun_bob_vert_fake.value.decimal = eweapon->vSprintBob[1];
+
+			// Point to fakes
+			yap_sprint_gun_rot_p_ptr = &yap_sprint_gun_rot_p_fake;
+			yap_sprint_gun_rot_r_ptr = &yap_sprint_gun_rot_r_fake;
+			yap_sprint_gun_rot_y_ptr = &yap_sprint_gun_rot_y_fake;
+			yap_sprint_gun_mov_f_ptr = &yap_sprint_gun_mov_f_fake;
+			yap_sprint_gun_mov_r_ptr = &yap_sprint_gun_mov_r_fake;
+			yap_sprint_gun_mov_u_ptr = &yap_sprint_gun_mov_u_fake;
+			yap_sprint_gun_ofs_f_ptr = &yap_sprint_gun_ofs_f_fake;
+			yap_sprint_gun_ofs_r_ptr = &yap_sprint_gun_ofs_r_fake;
+			yap_sprint_gun_ofs_u_ptr = &yap_sprint_gun_ofs_u_fake;
+			yap_sprint_gun_bob_horz_ptr = &yap_sprint_gun_bob_horz_fake;
+			yap_sprint_gun_bob_vert_ptr = &yap_sprint_gun_bob_vert_fake;
+		}
+		else {
+			// Point to real dvars
+			yap_sprint_gun_rot_p_ptr = yap_sprint_gun_rot_p;
+			yap_sprint_gun_rot_r_ptr = yap_sprint_gun_rot_r;
+			yap_sprint_gun_rot_y_ptr = yap_sprint_gun_rot_y;
+			yap_sprint_gun_mov_f_ptr = yap_sprint_gun_mov_f;
+			yap_sprint_gun_mov_r_ptr = yap_sprint_gun_mov_r;
+			yap_sprint_gun_mov_u_ptr = yap_sprint_gun_mov_u;
+			yap_sprint_gun_ofs_f_ptr = yap_sprint_gun_ofs_f;
+			yap_sprint_gun_ofs_r_ptr = yap_sprint_gun_ofs_r;
+			yap_sprint_gun_ofs_u_ptr = yap_sprint_gun_ofs_u;
+			yap_sprint_gun_bob_horz_ptr = yap_sprint_gun_bob_horz;
+			yap_sprint_gun_bob_vert_ptr = yap_sprint_gun_bob_vert;
+		}
+	}
+
 	void yap_activate_sprint() {
 		yap_sprint_trying->value.integer = 1;
 		yap_sprint_trying->latchedValue.integer = 1;
@@ -247,20 +368,41 @@ namespace sprint {
 		return yap_sprint_is_sprinting->value.integer != 0;
 	}
 
-
+	bool yap_is_trying_sprinting() {
+		return yap_sprint_trying->value.integer != 0;
+	}
 
 
 
 	vector3 yap_sprint_gun_mov() {
-		return vector3{ yap_sprint_gun_mov_f->value.decimal,yap_sprint_gun_mov_r->value.decimal,yap_sprint_gun_mov_u->value.decimal };
+		return vector3{
+			yap_sprint_gun_mov_f_ptr->value.decimal,
+			yap_sprint_gun_mov_r_ptr->value.decimal,
+			yap_sprint_gun_mov_u_ptr->value.decimal
+		};
 	}
 
 	vector3 yap_sprint_gun_rot() {
-		return vector3{ yap_sprint_gun_rot_p->value.decimal,yap_sprint_gun_rot_r->value.decimal,yap_sprint_gun_rot_y->value.decimal };
+		return vector3{
+			yap_sprint_gun_rot_p_ptr->value.decimal,
+			yap_sprint_gun_rot_r_ptr->value.decimal,
+			yap_sprint_gun_rot_y_ptr->value.decimal
+		};
+	}
+
+	vector3 yap_sprint_gun_ofs() {
+		return vector3{
+			yap_sprint_gun_ofs_f_ptr->value.decimal,
+			yap_sprint_gun_ofs_r_ptr->value.decimal,
+			yap_sprint_gun_ofs_u_ptr->value.decimal
+		};
 	}
 
 	vector2 yap_sprint_gun_bob() {
-		return vector2{ yap_sprint_gun_bob_horz->value.decimal,yap_sprint_gun_bob_vert->value.decimal };
+		return vector2{
+			yap_sprint_gun_bob_horz_ptr->value.decimal,
+			yap_sprint_gun_bob_vert_ptr->value.decimal
+		};
 	}
 
 	double __cdecl CG_GetWeaponVerticalBobFactor(float a1, float a2, float a3)
@@ -329,6 +471,13 @@ namespace sprint {
 			yap_sprint_trying = dvars::Dvar_RegisterInt("yap_sprint_trying", 0, 0, 1, DVAR_ROM);
 			yap_sprint_is_sprinting = dvars::Dvar_RegisterInt("yap_sprint_is_sprinting", 0, 0, 1, 0);
 
+			yay_sprint_gun_always_read_real = dvars::Dvar_RegisterInt("yap_sprint_gun_always_read_real", 0, 0, 1, 0);
+
+			yap_eweapon_semi_match = dvars::Dvar_RegisterInt("yap_eweapon_semi_match", 0, 0, 1, DVAR_ARCHIVE);
+
+			yap_player_sprintSpeedScale = dvars::Dvar_RegisterFloat("yap_player_sprintSpeedScale", 1.0f, 0.f, FLT_MAX,0);
+
+			update_sprint_gun_dvars();
 			Cmd_AddCommand("reload_eweapons", loadEWeapons);
 
 		}
@@ -343,11 +492,12 @@ namespace sprint {
 			Memory::VP::Nop(exe(0x004EC7D0), 2);
 
 			static auto CG_ViewAddWeaponorsmth = safetyhook::create_mid(exe(0x4B5730), [](SafetyHookContext& ctx) {
-
+				
 				if (yap_is_sprinting()) {
-					Memory::VP::Patch<dvar_s**>(exe((0x4B5847 + 2)), &yap_sprint_gun_rot_p);
-					Memory::VP::Patch<dvar_s**>(exe((0x4B5851 + 1)), &yap_sprint_gun_rot_y);
-					Memory::VP::Patch<dvar_s**>(exe((0x4B585B + 2)), &yap_sprint_gun_rot_r);
+					update_sprint_gun_dvars();
+					Memory::VP::Patch<dvar_s**>(exe((0x4B5847 + 2)), &yap_sprint_gun_rot_p_ptr);
+					Memory::VP::Patch<dvar_s**>(exe((0x4B5851 + 1)), &yap_sprint_gun_rot_y_ptr);
+					Memory::VP::Patch<dvar_s**>(exe((0x4B585B + 2)), &yap_sprint_gun_rot_r_ptr);
 				}
 				else {
 					Memory::VP::Patch<dvar_s**>(exe((0x4B5847 + 2)), (dvar_s**)0x01040C10);
@@ -360,21 +510,21 @@ namespace sprint {
 			static auto CG_ViewAddWeaponorsmth2 = safetyhook::create_mid(exe(0x4B5380), [](SafetyHookContext& ctx) {
 
 				if (yap_is_sprinting()) {
-					Memory::VP::Patch<dvar_s**>(exe((0x4B54AC + 2)), &yap_sprint_gun_mov_f);
-					Memory::VP::Patch<dvar_s**>(exe((0x4B54B6 + 1)), &yap_sprint_gun_mov_r);
-					Memory::VP::Patch<dvar_s**>(exe((0x4B54C0 + 2)), &yap_sprint_gun_mov_u);
+					update_sprint_gun_dvars();
+
+					Memory::VP::Patch<dvar_s**>(exe((0x4B54AC + 2)), &yap_sprint_gun_mov_f_ptr);
+					Memory::VP::Patch<dvar_s**>(exe((0x4B54B6 + 1)), &yap_sprint_gun_mov_r_ptr);
+					Memory::VP::Patch<dvar_s**>(exe((0x4B54C0 + 2)), &yap_sprint_gun_mov_u_ptr);
 
 
-
-					Memory::VP::Patch<dvar_s**>(exe((0x4B5511 + 1)), &yap_sprint_gun_ofs_f);
-					Memory::VP::Patch<dvar_s**>(exe((0x4B551C + 2)), &yap_sprint_gun_ofs_r);
-					Memory::VP::Patch<dvar_s**>(exe((0x4B553F + 1)), &yap_sprint_gun_ofs_u);
-
+					Memory::VP::Patch<dvar_s**>(exe((0x4B5511 + 1)), &yap_sprint_gun_ofs_f_ptr);
+					Memory::VP::Patch<dvar_s**>(exe((0x4B551C + 2)), &yap_sprint_gun_ofs_r_ptr);
+					Memory::VP::Patch<dvar_s**>(exe((0x4B553F + 1)), &yap_sprint_gun_ofs_u_ptr);
 
 
-					Memory::VP::Patch<dvar_s**>(exe((0x4B5561 + 2)), &yap_sprint_gun_ofs_f);
-					Memory::VP::Patch<dvar_s**>(exe((0x4B556D + 1)), &yap_sprint_gun_ofs_r);
-					Memory::VP::Patch<dvar_s**>(exe((0x4B558F + 2)), &yap_sprint_gun_ofs_u);
+					Memory::VP::Patch<dvar_s**>(exe((0x4B5561 + 2)), &yap_sprint_gun_ofs_f_ptr);
+					Memory::VP::Patch<dvar_s**>(exe((0x4B556D + 1)), &yap_sprint_gun_ofs_r_ptr);
+					Memory::VP::Patch<dvar_s**>(exe((0x4B558F + 2)), &yap_sprint_gun_ofs_u_ptr);
 				}
 				else {
 					Memory::VP::Patch<dvar_s**>(exe((0x4B54AC + 2)), (dvar_s**)0x01040BEC);
@@ -426,6 +576,26 @@ namespace sprint {
 				else
 					yap_deactivate_sprint();
 
+				printf("is trying to sprint? %d\n", yap_is_trying_sprinting());
+
+				});
+
+			static auto cmdwalk_sprint = safetyhook::create_mid(exe(0x50821F), [](SafetyHookContext& ctx) {
+
+				float& speed = *(float*)(ctx.esp + 0x8);
+
+				if (yap_is_sprinting()) {
+					speed *= yap_player_sprintSpeedScale->value.decimal;
+				}
+
+				printf("da speed %f\n", speed);
+
+				});
+
+			static auto PM_Weapon_skip = safetyhook::create_mid(exe(0x4DFDD5), [](SafetyHookContext& ctx) {
+				if (yap_is_sprinting()) {
+					ctx.eax = 1;
+				}
 
 				});
 
