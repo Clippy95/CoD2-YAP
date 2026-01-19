@@ -104,7 +104,7 @@
     <ClCompile Include="src\hooking.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\gfx_buffers.cpp">
+    <ClCompile Include="src\render.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\dvars.cpp">

@@ -187,7 +187,7 @@
   <ItemGroup>
     <ClCompile Include="src\dllmain.cpp" />
     <ClCompile Include="src\dvars.cpp" />
-    <ClCompile Include="src\gfx_buffers.cpp" />
+    <ClCompile Include="src\render.cpp" />
     <ClCompile Include="src\hooking.cpp" />
     <ClCompile Include="src\include\Hooking.Patterns.cpp" />
     <ClCompile Include="src\include\safetyhook.cpp" />
