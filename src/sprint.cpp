@@ -15,6 +15,7 @@
 #include "dvars.h"
 #include "hooking.h"
 #include "GMath.h"
+dvar_s* developer;
 struct kbutton_t
 {
 	uint64_t down;
@@ -99,6 +100,7 @@ namespace sprint {
 
 	const char* GetCurrentWeaponName() {
 		if (GetCurrentWeapon()) {
+			if(developer && developer->value.integer)
 			printf("name %s\n", *(const char**)GetCurrentWeapon());
 			return *(const char**)(GetCurrentWeapon());
 		}
@@ -210,7 +212,7 @@ namespace sprint {
 	}
 
 	void __cdecl Cmd_AddCommand(const char* command_name, void(__cdecl* function)()) {
-
+		if (developer && developer->value.integer)
 		printf("command name %s func %p\n", command_name, function);
 
 		cdecl_call(0x41BB00, command_name, function);
@@ -234,6 +236,7 @@ namespace sprint {
 	}
 	kbutton_t sprint;
 	void IN_SprintDown() {
+		if (developer && developer->value.integer)
 		printf("sprint down %p", &sprint);
 		IN_KeyDown(&sprint);
 	}
@@ -446,7 +449,7 @@ namespace sprint {
 	public:
 
 		void post_gfx() override {
-
+			developer = dvars::Dvar_FindVar("developer");
 			yap_sprint_gun_rot_p = dvars::Dvar_RegisterFloat("yap_sprint_gun_rot_p", 0.f, -FLT_MAX, FLT_MAX,0);
 			yap_sprint_gun_rot_r = dvars::Dvar_RegisterFloat("yap_sprint_gun_rot_r", 0.f, -FLT_MAX, FLT_MAX, 0);
 			yap_sprint_gun_rot_y = dvars::Dvar_RegisterFloat("yap_sprint_gun_rot_y", 0.f, -FLT_MAX, FLT_MAX, 0);
@@ -575,7 +578,7 @@ namespace sprint {
 					yap_activate_sprint();
 				else
 					yap_deactivate_sprint();
-
+				if (developer && developer->value.integer)
 				printf("is trying to sprint? %d\n", yap_is_trying_sprinting());
 
 				});
@@ -587,7 +590,7 @@ namespace sprint {
 				if (yap_is_sprinting()) {
 					speed *= yap_player_sprintSpeedScale->value.decimal;
 				}
-
+				if (developer && developer->value.integer)
 				printf("da speed %f\n", speed);
 
 				});
