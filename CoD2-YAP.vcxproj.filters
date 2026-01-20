@@ -110,6 +110,9 @@
     <ClCompile Include="src\dvars.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\fov.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <MASM Include="src\include\fpu_ops_x86.asm">
