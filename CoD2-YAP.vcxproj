@@ -72,12 +72,12 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <TargetExt>.asi</TargetExt>
-    <TargetName>$(ProjectName)</TargetName>
+    <TargetExt>.dll</TargetExt>
+    <TargetName>d3d9</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <TargetExt>.asi</TargetExt>
-    <TargetName>$(ProjectName)</TargetName>
+    <TargetExt>.dll</TargetExt>
+    <TargetName>d3d9</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -98,8 +98,8 @@
     </Link>
     <PostBuildEvent>
       <Command>if defined COD2_OUTPUT_PATH (
-    if not exist "%COD2_OUTPUT_PATH%\plugins\" mkdir "%COD2_OUTPUT_PATH%\plugins"
-    xcopy /Y "$(TargetDir)$(ProjectName).asi" "%COD2_OUTPUT_PATH%\plugins\" 2&gt;nul
+    if not exist "%COD2_OUTPUT_PATH%/" mkdir "%COD2_OUTPUT_PATH%/"
+    xcopy /Y "$(TargetDir)d3d9.dll" "%COD2_OUTPUT_PATH%\" 2&gt;nul
 )</Command>
     </PostBuildEvent>
     <PreBuildEvent>
@@ -130,8 +130,8 @@ popd</Command>
     </Link>
     <PostBuildEvent>
       <Command>if defined COD2_OUTPUT_PATH (
-    if not exist "%COD2_OUTPUT_PATH%\plugins\" mkdir "%COD2_OUTPUT_PATH%\plugins"
-    xcopy /Y "$(TargetDir)$(ProjectName).asi" "%COD2_OUTPUT_PATH%\plugins\" 2&gt;nul
+    if not exist "%COD2_OUTPUT_PATH%/" mkdir "%COD2_OUTPUT_PATH%/"
+    xcopy /Y "$(TargetDir)d3d9.dll" "%COD2_OUTPUT_PATH%\" 2&gt;nul
 )</Command>
     </PostBuildEvent>
     <PreBuildEvent>
