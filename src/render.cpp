@@ -40,6 +40,9 @@ namespace render {
 		}
 
 		void post_gfx() override {
+
+			SetProcessDPIAware();
+
 			if (!r_buf_dynamicIndexBuffer_mult) {
 				r_buf_dynamicIndexBuffer_mult = dvars::Dvar_RegisterInt("r_buf_dynamicIndexBuffer_mult", 4, 1, 16, DVAR_ARCHIVE);
 				r_buf_dynamicVertexBuffer_mult = dvars::Dvar_RegisterInt("r_buf_dynamicVertexBuffer_mult", 4, 1, 16, DVAR_ARCHIVE);
@@ -75,8 +78,24 @@ namespace render {
 
 
 				});
-		}
 
+			auto windowstyle_addr = gfx(0x10012B16);
+
+			static auto r_noborder = dvars::Dvar_RegisterInt("r_noborder", 0, 0, 1,DVAR_ARCHIVE);
+
+			Memory::VP::Nop(windowstyle_addr, 5);
+			CreateMidHook(windowstyle_addr, [](SafetyHookContext& ctx) {
+
+				if (r_noborder->value.integer) {
+					ctx.ebp = WS_VISIBLE | WS_POPUP;
+				}
+				else {
+					ctx.ebp = WS_VISIBLE | WS_SYSMENU | WS_CAPTION;
+				}
+
+				});
+
+		}
 
 
 	};

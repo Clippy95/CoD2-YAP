@@ -102,6 +102,11 @@
     xcopy /Y "$(TargetDir)$(ProjectName).asi" "%COD2_OUTPUT_PATH%\plugins\" 2&gt;nul
 )</Command>
     </PostBuildEvent>
+    <PreBuildEvent>
+      <Command>pushd "$(SolutionDir)src\include\extra"
+call "$(SolutionDir)src\include\extra\gitrev.bat"
+popd</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -129,6 +134,11 @@
     xcopy /Y "$(TargetDir)$(ProjectName).asi" "%COD2_OUTPUT_PATH%\plugins\" 2&gt;nul
 )</Command>
     </PostBuildEvent>
+    <PreBuildEvent>
+      <Command>pushd "$(SolutionDir)src\include\extra"
+call "$(SolutionDir)src\include\extra\gitrev.bat"
+popd</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
