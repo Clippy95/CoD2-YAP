@@ -9,6 +9,8 @@
 #include <safetyhook.hpp>
 #include "hooking.h"
 
+#include "buildnumber.h"
+
 uintptr_t exe(uintptr_t sp) {
     return sp;
 }
@@ -177,6 +179,8 @@ void Init() {
     OpenConsoleAndRedirectIO();
     Memory::VP::InterceptCall(0x4A3999, CG_init_ptr, CG_Init_stub);
 
+    static const char* version = "CoD2-YAP r" BUILD_NUMBER_STR;
+    Memory::VP::Patch<const char*>(exe((0x004060E6 + 1)), version);
 
 }
 
