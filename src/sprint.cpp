@@ -245,11 +245,30 @@ namespace sprint {
 		IN_KeyUp(&sprint);
 	}
 
+
+	void IN_BreathSprint_Down() {
+		kbutton_t* holdbreath = (kbutton_t*)0x005D20D4;
+		IN_KeyDown(holdbreath);
+		IN_SprintDown();
+	}
+
+	void IN_BreathSprint_Up() {
+		kbutton_t* holdbreath = (kbutton_t*)0x005D20D4;
+		IN_KeyUp(holdbreath);
+		IN_SprintUp();
+
+
+
+	}
+
 	uintptr_t setup_binds_og;
 	int setup_binds() {
 
 		Cmd_AddCommand("+sprint", IN_SprintDown);
 		Cmd_AddCommand("-sprint", IN_SprintUp);
+
+		Cmd_AddCommand("+sprintbreath", IN_BreathSprint_Down);
+		Cmd_AddCommand("-sprintbreath", IN_BreathSprint_Up);
 
 		return cdecl_call<int>(setup_binds_og);
 	}
@@ -572,10 +591,11 @@ namespace sprint {
 				});
 
 			static auto CL_UpdateCmdButton = safetyhook::create_mid(exe(0x409AF0), [](SafetyHookContext& ctx) {
-				kbutton_t* holdbreath = (kbutton_t*)0x005D20D4;
 
-				if (holdbreath->active || holdbreath->wasPressed)
+				if (sprint.active || sprint.wasPressed) {
 					yap_activate_sprint();
+					sprint.wasPressed = false;
+				}
 				else
 					yap_deactivate_sprint();
 				if (developer && developer->value.integer)
