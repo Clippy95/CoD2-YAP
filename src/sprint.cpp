@@ -38,10 +38,11 @@ namespace sprint {
 		float SprintFaituge;
 		bool preventFatigueRegen; // Flag to prevent regen when player is trying to sprint while exhausted
 		int lastCommandTime;
+		int lastUpdateTime;
+		bool wasSprinting;
 	};
 
-	// Initialize with full fatigue and no regen prevention
-	state g_sprintState = { 0, 1.0f, false };
+	state g_sprintState = { 0, 1.0f, false, 0, 0, false };
 
 
 	dvar_s* yap_sprint_fatigue_min_threshold;
@@ -505,7 +506,7 @@ namespace sprint {
 	void PM_UpdateSprintingFlag(pmove_t* pm) {
 		if (!pm || !pm->ps)
 			return;
-		printf("ps pm %p %p\n", pm->ps,pm);
+		//printf("ps pm %p %p\n", pm->ps,pm);
 
 		bool tryingToMove = false;
 
@@ -549,21 +550,20 @@ namespace sprint {
 		if (!pm || !pm->ps)
 			return;
 
-		printf("fatigue %f\n", g_sprintState.SprintFaituge);
-		int commandTime = pm->ps->commandTime;
-		static int lastUpdateTime = 0;
+		static int lastRealTime = 0;
 
-		//if (commandTime == g_sprintState.lastCommandTime)
-		//	return;
+		int realTime = *(int*)0xF708DC; // cgameGlob->time
 
-
-		if (lastUpdateTime == 0) {
-			lastUpdateTime = commandTime;
+		if (lastRealTime == 0) {
+			lastRealTime = realTime;
 			return;
 		}
 
-		int frameDeltaMs = commandTime - lastUpdateTime;
-		lastUpdateTime = commandTime;
+		if (realTime == lastRealTime)
+			return;
+
+		int frameDeltaMs = realTime - lastRealTime;
+		lastRealTime = realTime;
 
 		if (frameDeltaMs <= 0 || frameDeltaMs > 1000)
 			return;
@@ -571,15 +571,10 @@ namespace sprint {
 		float frameTimeSec = frameDeltaMs * 0.001f;
 
 		if (yap_is_sprinting()) {
-			g_sprintState.lastSprintTime = commandTime;
+			g_sprintState.lastSprintTime = realTime;
 
 			float drainAmount = frameTimeSec * yap_sprint_fatigue_drain_rate->value.decimal;
 			g_sprintState.SprintFaituge -= drainAmount;
-
-			// DEBUG: Print every frame while sprinting
-			printf("DRAIN: commandTime=%d, lastUpdateTime=%d, frameDeltaMs=%d, frameTimeSec=%.4f, drainRate=%.4f, drainAmount=%.6f, newFatigue=%.4f\n",
-				commandTime, lastUpdateTime - frameDeltaMs, frameDeltaMs, frameTimeSec,
-				yap_sprint_fatigue_drain_rate->value.decimal, drainAmount, g_sprintState.SprintFaituge);
 
 			if (g_sprintState.SprintFaituge < 0.0f) {
 				g_sprintState.SprintFaituge = 0.0f;
@@ -589,23 +584,16 @@ namespace sprint {
 			g_sprintState.preventFatigueRegen = false;
 		}
 		else {
-			float timeSinceLastSprint = (commandTime - g_sprintState.lastSprintTime) * 0.001f;
+			float timeSinceLastSprint = (realTime - g_sprintState.lastSprintTime) * 0.001f;
 
 			if (!g_sprintState.preventFatigueRegen &&
 				timeSinceLastSprint >= yap_sprint_fatigue_regen_delay->value.decimal) {
 
-				// Regen: frameDeltaMs * 0.001 * regen_rate
 				g_sprintState.SprintFaituge += frameTimeSec * yap_sprint_fatigue_regen_rate->value.decimal;
 				if (g_sprintState.SprintFaituge > 1.0f) {
 					g_sprintState.SprintFaituge = 1.0f;
 				}
 			}
-		}
-
-		if (developer && developer->value.integer > 1) {
-			float timeSinceLastSprint = (commandTime - g_sprintState.lastSprintTime) * 0.001f;
-			printf("Fatigue: %.3f, TimeSinceSprint: %.3f, FrameMs: %d, Sprinting: %d, PreventRegen: %d\n",
-				g_sprintState.SprintFaituge, timeSinceLastSprint, frameDeltaMs, yap_is_sprinting(), g_sprintState.preventFatigueRegen);
 		}
 	}
 
@@ -724,7 +712,7 @@ constexpr auto GREY_MAYBE = 0.6f;
 			developer = dvars::Dvar_FindVar("developer");
 
 			yap_sprint_fatigue_min_threshold = dvars::Dvar_RegisterFloat("yap_sprint_fatigue_min_threshold", 0.05f, 0.0f, 1.0f, DVAR_ARCHIVE);
-			yap_sprint_fatigue_drain_rate = dvars::Dvar_RegisterFloat("yap_sprint_fatigue_drain_rate", 0.6667f, 0.0f, 10.0f, DVAR_ARCHIVE);
+			yap_sprint_fatigue_drain_rate = dvars::Dvar_RegisterFloat("yap_sprint_fatigue_drain_rate", (0.6667f) / 2.f, 0.0f, 10.0f, DVAR_ARCHIVE);
 			yap_sprint_fatigue_regen_rate = dvars::Dvar_RegisterFloat("yap_sprint_fatigue_regen_rate", 0.3333f, 0.0f, 10.0f, DVAR_ARCHIVE);
 			yap_sprint_fatigue_regen_delay = dvars::Dvar_RegisterFloat("yap_sprint_fatigue_regen_delay", 1.0f, 0.0f, 10.0f, DVAR_ARCHIVE);
 
@@ -756,7 +744,7 @@ constexpr auto GREY_MAYBE = 0.6f;
 
 			yap_eweapon_semi_match = dvars::Dvar_RegisterInt("yap_eweapon_semi_match", 0, 0, 1, DVAR_ARCHIVE);
 
-			yap_player_sprintSpeedScale = dvars::Dvar_RegisterFloat("yap_player_sprintSpeedScale", 1.0f, 0.f, FLT_MAX,0);
+			yap_player_sprintSpeedScale = dvars::Dvar_RegisterFloat("yap_player_sprintSpeedScale", 1.6f, 0.f, FLT_MAX,DVAR_ARCHIVE);
 
 			update_sprint_gun_dvars();
 			Cmd_AddCommand("reload_eweapons", loadEWeapons);
@@ -772,10 +760,10 @@ constexpr auto GREY_MAYBE = 0.6f;
 
 			static auto CG_CheckPlayerStanceChange = safetyhook::create_mid(0x4BE445, [](SafetyHookContext& ctx) {
 
-				static bool wasSprinting = false;
 				bool isSprinting = yap_is_sprinting();
 
-				if (isSprinting != wasSprinting) {
+				// Check if sprint state changed
+				if (isSprinting != g_sprintState.wasSprinting) {
 					// flash the stance baby
 					ctx.ecx = 0x00002300;
 
@@ -784,8 +772,9 @@ constexpr auto GREY_MAYBE = 0.6f;
 					int* lastStanceChangeTime = (int*)0xF796C8;
 					*lastStanceChangeTime = *cgTime;
 
+					// Update state
+					g_sprintState.wasSprinting = isSprinting;
 				}
-				wasSprinting = isSprinting;
 
 				int* mask = (int*)(ctx.esp + 0x4);
 
