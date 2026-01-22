@@ -735,6 +735,9 @@ namespace sprint {
 
 	}
 constexpr auto GREY_MAYBE = 0.6f;
+
+uintptr_t stance_sprint_shader = 0;
+
 	void UI_DrawHandlePic_stub(float x, float y, float w, float h, vec4_t* color, void* shader) {
 		int ebx_og;
 		int edi_og;
@@ -746,6 +749,10 @@ constexpr auto GREY_MAYBE = 0.6f;
 		vec4_t dem_color = { GREY_MAYBE,GREY_MAYBE,GREY_MAYBE,1.f };
 
 		float fatiguePercent = g_sprintState.SprintFaituge; // 0.0 to 1.0
+
+		if (yap_is_sprinting()) {
+			shader = (void*)stance_sprint_shader;
+		}
 
 		UI_DrawHandlePic_with_t(x, y, w, h, ebx_og, edi_og, 1.f, 1.f, 1.f, 1.f, &dem_color, shader);
 		// this down here is the white one
@@ -795,11 +802,17 @@ constexpr auto GREY_MAYBE = 0.6f;
 		}
 
 	}
+
+	int CL_RegisterMaterial(const char* material_name, int unk1, int unk2) {
+		return cdecl_call<int>(*(uintptr_t*)0x617AC0, material_name, unk1, unk2);
+
+	}
+
 	class component final : public component_interface
 	{
 	public:
 
-		void post_gfx() override {
+		void post_unpack() override {
 			developer = dvars::Dvar_FindVar("developer");
 
 			yap_sprint_fatigue_min_threshold = dvars::Dvar_RegisterFloat("yap_sprint_fatigue_min_threshold", 0.05f, 0.0f, 1.0f, DVAR_ARCHIVE);
@@ -852,6 +865,14 @@ constexpr auto GREY_MAYBE = 0.6f;
 		}
 
 		void post_start() override {
+
+			static auto registering_graphics = safetyhook::create_mid(0x4A2ECE, [](SafetyHookContext& ctx) {
+				auto default_mat = CL_RegisterMaterial("&default", 3, 7);
+				stance_sprint_shader = CL_RegisterMaterial("stance_sprint", 3, 7);
+				printf("SPRINTING IS UHHH %d\n", stance_sprint_shader);
+
+
+				});
 
 			Memory::VP::Patch<void*>(exe((0x40A1A0 + 1)), IN_HoldBreath_Down);
 			Memory::VP::Patch<void*>(exe((0x40A1AF + 1)), IN_HoldBreath_Up);

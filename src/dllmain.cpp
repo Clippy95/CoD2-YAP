@@ -165,6 +165,12 @@ int CG_Init_stub() {
 
 }
 
+uintptr_t post_sv_cheats_first_addr;
+int post_sv_cheats_first() {
+    component_loader::post_unpack();
+    return cdecl_call<int>(post_sv_cheats_first_addr);
+}
+
 void Init() {
     
     uint32_t value;
@@ -178,6 +184,8 @@ void Init() {
     component_loader::post_start();
     OpenConsoleAndRedirectIO();
     Memory::VP::InterceptCall(0x4A3999, CG_init_ptr, CG_Init_stub);
+
+    Memory::InterceptCall(exe(0x4509AF), post_sv_cheats_first_addr, post_sv_cheats_first);
 
     static const char* version = "CoD2-YAP r" BUILD_NUMBER_STR;
     Memory::VP::Patch<const char*>(exe((0x004060E6 + 1)), version);
