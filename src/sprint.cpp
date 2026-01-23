@@ -693,8 +693,6 @@ namespace sprint {
 		float adsFraction = thing[46];
 		bool isADS = adsFraction >= 0.1f;
 
-		printf("max speed %d\n", pm->ps->speed);
-
 		bool AllowedToSprint = !isADS && !(flags & PMF_CROUCH) && !(flags & PMF_PRONE) && !(flags & PMF_FRAG) && !(flags & PMF_MANTLE) && !(flags & PMF_LADDER);
 
 		AllowedToSprint = AllowedToSprint && (pm->ps->speed >= (int)((float)dvars::Dvar_FindVar("g_speed")->defaultValue.integer * 0.85f));
@@ -751,9 +749,15 @@ namespace sprint {
 			return;
 
 		float frameTimeSec = frameDeltaMs * 0.001f;
+		float threshold = 4.5f;
+
+		vector2& velocity_2d = *(vector2*)&pm->ps->velocity;
+		float speedSquared = velocity_2d.length();
+		bool is_moving = yap_sprint_fatigue_drainonmove->value.integer ? speedSquared > threshold : true;
 
 		if (yap_is_sprinting()) {
-			g_sprintState.lastSprintTime = realTime;
+			if (is_moving){
+				g_sprintState.lastSprintTime = realTime;
 
 			float drainAmount = frameTimeSec * yap_sprint_fatigue_drain_rate->value.decimal;
 			g_sprintState.SprintFaituge -= drainAmount;
@@ -764,6 +768,7 @@ namespace sprint {
 				pm->ps->pm_flags &= ~PMF_SPRINTING;
 			}
 			g_sprintState.preventFatigueRegen = false;
+	}
 		}
 		else {
 			float timeSinceLastSprint = (realTime - g_sprintState.lastSprintTime) * 0.001f;
@@ -986,7 +991,7 @@ uintptr_t stance_sprint_shader = 0;
 			yay_sprint_display_icon = dvars::Dvar_RegisterInt("yap_sprint_display_icon", 1, 0, 1, DVAR_ARCHIVE, "Displays the \"stance_sprint\" material on the stance draw when sprinting");
 			yap_sprint_fatigue_min_threshold = dvars::Dvar_RegisterFloat("yap_sprint_fatigue_min_threshold", 0.05f, 0.0f, 1.0f, DVAR_ARCHIVE);
 			yap_sprint_fatigue_drain_rate = dvars::Dvar_RegisterFloat("yap_sprint_fatigue_drain_rate", (0.6667f) / 2.f, 0.0f, 10.0f, DVAR_ARCHIVE);
-			//yap_sprint_fatigue_drainonmove = dvars::Dvar_RegisterInt("yap_sprint_fatigue_drainonmove", 1, 0, 1, DVAR_ARCHIVE, "Only drain sprint fatigue when the player is at least moving");
+			yap_sprint_fatigue_drainonmove = dvars::Dvar_RegisterInt("yap_sprint_fatigue_drainonmove", 1, 0, 1, DVAR_ARCHIVE, "Only drain sprint fatigue when the player is at least moving");
 			yap_sprint_fatigue_regen_rate = dvars::Dvar_RegisterFloat("yap_sprint_fatigue_regen_rate", 0.3333f, 0.0f, 10.0f, DVAR_ARCHIVE);
 			yap_sprint_fatigue_regen_delay = dvars::Dvar_RegisterFloat("yap_sprint_fatigue_regen_delay", 1.0f, 0.0f, 10.0f, DVAR_ARCHIVE);
 

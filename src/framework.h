@@ -4,7 +4,7 @@
 // Windows Header Files
 #include <windows.h>
 #define LIBRARY "DDRAW.dll"
-
+#include "GMath.h"
 #define LIBRARYW TEXT(LIBRARY)
 // cdecl
 template<typename Ret = void, typename... Args>
@@ -42,8 +42,8 @@ uintptr_t exe(uintptr_t sp);
 
 typedef unsigned char byte;
 typedef float vec_t;
-typedef vec_t vec2_t[2];
-typedef vec_t vec3_t[3];
+typedef vector2 vec2_t;
+typedef vector3 vec3_t;
 typedef vec_t vec4_t[4];
 typedef vec_t vec5_t[5];
 

@@ -156,21 +156,21 @@ inline void AngleVectors( const vec3_t angles, vec3_t forward, vec3_t right, vec
 	sr = sin( angle );
 	cr = cos( angle );
 
-	if ( forward )
+	if ( &forward )
 	{
 		forward[0] = cp * cy;
 		forward[1] = cp * sy;
 		forward[2] = -sp;
 	}
 
-	if ( right )
+	if ( &right )
 	{
 		right[0] = ( -1 * sr * sp * cy + - 1 * cr * -sy );
 		right[1] = ( -1 * sr * sp * sy + - 1 * cr * cy );
 		right[2] = -1 * sr * cp;
 	}
 
-	if ( up )
+	if ( &up )
 	{
 		up[0] = ( cr * sp * cy + - sr * -sy );
 		up[1] = ( cr * sp * sy + - sr * cy );

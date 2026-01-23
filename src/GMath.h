@@ -475,6 +475,21 @@ struct vector3
         return *this;
     }
 
+    float& operator[](int index) {
+        if (index < 0 || index > 2) {
+            throw std::out_of_range("vec3_t index out of range");
+        }
+        return (&x)[index];
+    }
+
+    // For const access with bounds checking
+    const float& operator[](int index) const {
+        if (index < 0 || index > 2) {
+            throw std::out_of_range("vec3_t index out of range");
+        }
+        return (&x)[index];
+    }
+
     // Comparison operators
     bool operator==(const vector3& other) const {
         const float epsilon = 1e-6f;

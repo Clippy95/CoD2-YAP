@@ -187,6 +187,18 @@ namespace game {
 
 }
 
+//struct playerstate_ext {
+//	vec3_t Oldorigin;
+//};
+//
+////playerstate_ext pstates_ext[MAX_CLIENTS]{};
+//
+//inline std::unordered_map<void*, playerstate_ext> g_psExtensions;
+//
+//inline playerstate_ext* get_ps_ext(void* ps) {
+//	return &g_psExtensions[ps];
+//}
+
 WEAK game::symbol<int (const char *Format, ...)> Com_Printf{ 0x42C130 };
 
 extern void retptr();

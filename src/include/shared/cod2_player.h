@@ -236,7 +236,7 @@ struct pmove_t
 	usercmd_s oldcmd;
 	int tracemask;
 	int numtouch;
-	int touchents[32];
+	int touchents[42]; //wtf SP
 	vec3_t mins;
 	vec3_t maxs;
 	float xyspeed;
