@@ -54,6 +54,9 @@ namespace sprint {
 	dvar_s* yap_sprint_fatigue_min_threshold;
 	dvar_s* yap_sprint_fatigue_drain_rate;
 	dvar_s* yap_sprint_fatigue_regen_rate;
+
+	dvar_s* yap_sprint_fatigue_drainonmove;
+
 	dvar_s* yap_sprint_fatigue_regen_delay;
 
 	dvar_s* yap_sprint_gun_rot_p;
@@ -87,6 +90,8 @@ namespace sprint {
 	dvar_s* yap_player_sprintSpeedScale;
 
 	dvar_s* yap_player_sprintStrafeSpeedScale;
+
+	dvar_s* yap_sprint_reload_cancel;
 
 	// Fake dvars for eWeapon values
 	dvar_s yap_sprint_gun_rot_p_fake;
@@ -688,7 +693,12 @@ namespace sprint {
 		float adsFraction = thing[46];
 		bool isADS = adsFraction >= 0.1f;
 
+		printf("max speed %d\n", pm->ps->speed);
+
 		bool AllowedToSprint = !isADS && !(flags & PMF_CROUCH) && !(flags & PMF_PRONE) && !(flags & PMF_FRAG) && !(flags & PMF_MANTLE) && !(flags & PMF_LADDER);
+
+		AllowedToSprint = AllowedToSprint && (pm->ps->speed >= (int)((float)dvars::Dvar_FindVar("g_speed")->defaultValue.integer * 0.85f));
+
 		if (wantsToSprint && can_sprint() && AllowedToSprint) {
 			// Activate sprinting only if not in ADS
 			pm->ps->pm_flags |= PMF_SPRINTING;
@@ -783,6 +793,17 @@ namespace sprint {
 			mov edi, pm
 			mov eax, pml
 			call func
+			popad
+		}
+	}
+
+	uintptr_t PM_Weapon_Idle_addr = 0x4DF0A0;
+
+	void __cdecl PM_Weapon_Idle(playerState_t* ps) {
+		__asm {
+			pushad
+			mov eax, ps
+			call PM_Weapon_Idle_addr
 			popad
 		}
 	}
@@ -930,6 +951,31 @@ uintptr_t stance_sprint_shader = 0;
 		return cdecl_call<int>(PM_WalkMove_og, pm, pml);
 
 	}
+	uintptr_t PM_IDK4DE720_og;
+
+
+	int __cdecl PM_IDK4DE720(pmove_t* pm, int a2) {
+
+
+		auto ps = pm->ps;
+
+
+		if (yap_sprint_reload_cancel->value.integer &&
+			(pm->ps->pm_flags & PMF_SPRINTING) &&
+			pm->ps->weaponstate == 5) {
+
+
+			pm->ps->weaponstate = 17;
+			PM_Weapon_Idle(pm->ps);
+		}
+
+
+		auto result = cdecl_call<int>(PM_IDK4DE720_og, pm, a2);
+		printf("anim %d state %d delay %d time %d\n", ps->weapAnim, ps->weaponstate, ps->weaponDelay,ps->weaponTime);
+
+		return result;
+
+	}
 
 	class component final : public component_interface
 	{
@@ -940,6 +986,7 @@ uintptr_t stance_sprint_shader = 0;
 			yay_sprint_display_icon = dvars::Dvar_RegisterInt("yap_sprint_display_icon", 1, 0, 1, DVAR_ARCHIVE, "Displays the \"stance_sprint\" material on the stance draw when sprinting");
 			yap_sprint_fatigue_min_threshold = dvars::Dvar_RegisterFloat("yap_sprint_fatigue_min_threshold", 0.05f, 0.0f, 1.0f, DVAR_ARCHIVE);
 			yap_sprint_fatigue_drain_rate = dvars::Dvar_RegisterFloat("yap_sprint_fatigue_drain_rate", (0.6667f) / 2.f, 0.0f, 10.0f, DVAR_ARCHIVE);
+			//yap_sprint_fatigue_drainonmove = dvars::Dvar_RegisterInt("yap_sprint_fatigue_drainonmove", 1, 0, 1, DVAR_ARCHIVE, "Only drain sprint fatigue when the player is at least moving");
 			yap_sprint_fatigue_regen_rate = dvars::Dvar_RegisterFloat("yap_sprint_fatigue_regen_rate", 0.3333f, 0.0f, 10.0f, DVAR_ARCHIVE);
 			yap_sprint_fatigue_regen_delay = dvars::Dvar_RegisterFloat("yap_sprint_fatigue_regen_delay", 1.0f, 0.0f, 10.0f, DVAR_ARCHIVE);
 
@@ -976,6 +1023,8 @@ uintptr_t stance_sprint_shader = 0;
 			yap_player_sprintSpeedScale = dvars::Dvar_RegisterFloat("yap_player_sprintSpeedScale", 1.6f, 0.f, FLT_MAX,DVAR_ARCHIVE,"The scale applied to the player speed when sprinting");
 
 			yap_player_sprintStrafeSpeedScale = dvars::Dvar_RegisterFloat("yap_player_sprintStrafeSpeedScale", 0.667, 0.01f, 1.f, DVAR_ARCHIVE, "The speed at which you can strafe while sprinting");
+
+			//yap_sprint_reload_cancel = dvars::Dvar_RegisterInt("yap_sprint_reload_cancel", 0, 0, 1, DVAR_ARCHIVE, "Cancels reloading when starting to sprint");
 
 			yap_sprint_bind_holdbreath = dvars::Dvar_RegisterInt("yap_sprint_bind_holdbreath", 1, 0, 1, DVAR_ARCHIVE);
 
@@ -1044,6 +1093,8 @@ uintptr_t stance_sprint_shader = 0;
 			//	});
 
 			Memory::VP::InterceptCall(exe(0x50CACF), PM_WalkMove_og, PM_WalkMove);
+
+			//Memory::VP::InterceptCall(exe(0x4DFC88), PM_IDK4DE720_og, PM_IDK4DE720);
 
 			Memory::VP::InjectHook(0x4A8142, UI_DrawHandlePic_stub);
 
