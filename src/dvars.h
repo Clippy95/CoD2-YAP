@@ -91,6 +91,8 @@ namespace dvars {
     WEAK game::symbol<dvar_s* (const char*, float, float, float, float, uint16_t)> Dvar_RegisterVec2_Original{ 0x4320A0 };
     WEAK game::symbol<dvar_s* (const char*)> Dvar_FindVar{ 0x431260 };
 
+    inline dvar_s* developer;
+
     inline dvar_s* Dvar_RegisterInt(const char* name, int value, int min, int max, uint16_t flags, const char* description = nullptr) {
         if (description && description[0] != '\0') {
             descriptions_runtime[name] = description;

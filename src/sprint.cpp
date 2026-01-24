@@ -16,7 +16,6 @@
 #include "hooking.h"
 #include "GMath.h"
 #include "cod2_player.h"
-dvar_s* developer;
 
 #define CMD_SPRINT (1 << 31)
 #define PMF_SPRINTING CMD_SPRINT
@@ -134,7 +133,7 @@ namespace sprint {
 		yap_sprint_is_sprinting->latchedValue.integer = sprinting ? 1 : 0;
 		yap_sprint_is_sprinting->modified = true;
 
-		if (developer && developer->value.integer) {
+		if (dvars::developer && dvars::developer->value.integer) {
 			printf("Sprint state changed to: %d\n", sprinting);
 		}
 	}
@@ -216,7 +215,7 @@ namespace sprint {
 
 	const char* GetCurrentWeaponName() {
 		if (GetCurrentWeapon()) {
-			if(developer && developer->value.integer)
+			if(dvars::developer && dvars::developer->value.integer)
 			printf("name %s\n", *(const char**)GetCurrentWeapon());
 			return *(const char**)(GetCurrentWeapon());
 		}
@@ -345,7 +344,7 @@ namespace sprint {
 	}
 	kbutton_t sprint;
 	void IN_SprintDown() {
-		if (developer && developer->value.integer)
+		if (dvars::developer && dvars::developer->value.integer)
 		printf("sprint down %p", &sprint);
 		IN_KeyDown(&sprint);
 	}
@@ -720,7 +719,7 @@ namespace sprint {
 			}
 		}
 
-		if (developer && developer->value.integer) {
+		if (dvars::developer && dvars::developer->value.integer) {
 			printf("pm_flags 0x%X adsFrac: %.3f %d, wantsSprint: %d, canSprint: %d, isADS: %d, preventRegen: %d\n",
 				pm->ps->pm_flags, adsFraction, pm->ps->commandTime, wantsToSprint, can_sprint(), isADS, g_sprintState.preventFatigueRegen);
 		}
@@ -989,7 +988,7 @@ uintptr_t stance_sprint_shader = 0;
 	public:
 
 		void post_unpack() override {
-			developer = dvars::Dvar_FindVar("developer");
+			dvars::developer = dvars::Dvar_FindVar("developer");
 			yay_sprint_display_icon = dvars::Dvar_RegisterInt("yap_sprint_display_icon", 1, 0, 1, DVAR_ARCHIVE, "Displays the \"stance_sprint\" material on the stance draw when sprinting");
 			yap_sprint_fatigue_min_threshold = dvars::Dvar_RegisterFloat("yap_sprint_fatigue_min_threshold", 0.05f, 0.0f, 1.0f, DVAR_ARCHIVE);
 			yap_sprint_fatigue_drain_rate = dvars::Dvar_RegisterFloat("yap_sprint_fatigue_drain_rate", (0.6667f) / 2.f, 0.0f, 10.0f, DVAR_ARCHIVE);
@@ -1219,7 +1218,7 @@ uintptr_t stance_sprint_shader = 0;
 				}
 				else
 					yap_deactivate_sprint();
-				if (developer && developer->value.integer)
+				if (dvars::developer && dvars::developer->value.integer)
 				printf("is trying to sprint? %d\n", yap_is_trying_sprinting());
 
 				});
@@ -1231,7 +1230,7 @@ uintptr_t stance_sprint_shader = 0;
 				if (yap_is_sprinting()) {
 					speed *= yap_player_sprintSpeedScale->value.decimal;
 				}
-				if (developer && developer->value.integer)
+				if (dvars::developer && dvars::developer->value.integer)
 				printf("da speed %f\n", speed);
 
 				});
