@@ -697,6 +697,8 @@ namespace sprint {
 
 		AllowedToSprint = AllowedToSprint && (pm->ps->speed >= (int)((float)dvars::Dvar_FindVar("g_speed")->defaultValue.integer * 0.85f));
 
+		AllowedToSprint = AllowedToSprint && (pm->ps->leanf == 0.f);
+
 		if (wantsToSprint && can_sprint() && AllowedToSprint) {
 			// Activate sprinting only if not in ADS
 			pm->ps->pm_flags |= PMF_SPRINTING;
