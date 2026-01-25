@@ -16,6 +16,7 @@
 #include "hooking.h"
 #include "GMath.h"
 #include "cod2_player.h"
+#include <menudef.h>
 
 #define CMD_SPRINT (1 << 31)
 #define PMF_SPRINTING CMD_SPRINT
@@ -1050,12 +1051,12 @@ uintptr_t stance_sprint_shader = 0;
 		Memory::VP::Patch<void*>((void*)0x004CDB6A, new_end_0x5A520C);
 
 		// Controls_GetConfig - key1 iteration (0x5A5218)
-		Memory::VP::Patch<void*>((void*)0x004CD883, new_end_0x5A5218);  // cmp esi, offset dword_5A5218
-		Memory::VP::Patch<void*>((void*)0x004CD935, new_end_0x5A5218);  // cmp eax, offset dword_5A5218
+		Memory::VP::Patch<void*>((void*)(0x004CD881 + 2), new_end_0x5A5218);  // cmp esi, offset dword_5A5218
+		Memory::VP::Patch<void*>((void*)(0x004CD933 + 1), new_end_0x5A5218);  // cmp eax, offset dword_5A5218
 
 		// sub_4CD890 - key2 iteration (0x5A521C)
-		Memory::VP::Patch<void*>((void*)0x004CD8FE, new_end_0x5A521C);  // cmp esi, offset off_5A521C
-		Memory::VP::Patch<void*>((void*)0x004CE1BF, new_end_0x5A521C);  // cmp eax, offset off_5A521C
+		Memory::VP::Patch<void*>((void*)(0x004CD8FC + 2), new_end_0x5A521C);  // cmp esi, offset off_5A521C
+		Memory::VP::Patch<void*>((void*)(0x004CE1BD + 1), new_end_0x5A521C);  // cmp eax, offset off_5A521C
 
 		printf("Patched end-of-array references:\n");
 		printf("  0x5A520C -> 0x%p (array end)\n", new_end_0x5A520C);
@@ -1266,7 +1267,60 @@ uintptr_t stance_sprint_shader = 0;
 
 				});
 
+			//static auto menu_parse_item = safetyhook::create_mid(exe(0x4D382A), [](SafetyHookContext& ctx) {
+			//	return;
+			//	menuDef_t* menu = (menuDef_t*)(ctx.ebx);
+			//	if (menu && menu->window.name && !strcmp(menu->window.name, "options_shoot")) {
+			//		printf("name %s items %d\n", menu->window.name, menu->itemCount);
 
+			//		int lastButtonIndex = -1;
+
+			//		for (int i = 0; i < menu->itemCount; i++) {
+			//			if (menu->items[i]->mouseExit) {
+			//				printf("mouse exit is uh %s type %d\n", menu->items[i]->mouseExit, menu->items[i]->type);
+			//			}
+			//			if (menu->items[i]->type == ITEM_TYPE_BUTTON && menu->items[i]->text) {
+			//				printf("dat BUTTON BE %s %p\n\n\n\n", menu->items[i]->text, menu->items[i]->dvar);
+			//				lastButtonIndex = i;
+			//			}
+			//			if (menu->items[i]->text) {
+			//				if (!strcmp("@MENU_AIM_DOWN_THE_SIGHT", menu->items[i]->text)) {
+			//					printf("dat POINTER BE %p\n\n\n\n", menu->items[i]);
+			//					for (int j = 0; j < 4; j++) {
+			//						auto rect = menu->items[i]->window.rect;
+			//						printf("%d %p rect %f %f\n", j, &rect[j].x, rect[j].x, rect[j].y);
+			//					}
+			//				}
+			//			}
+			//		}
+
+			//		// If we found a button, duplicate it
+			//		if (lastButtonIndex != -1) {
+			//			// Allocate new itemDef_s
+			//			itemDef_s* newItem = (itemDef_s*)game::UI_Alloc(sizeof(itemDef_s), 4);
+
+			//			// Copy the original item
+			//			memcpy(newItem, menu->items[lastButtonIndex], sizeof(itemDef_s));
+
+			//			// Allocate and set new text
+			//			newItem->text = game::String_Alloc("Sprint/Hold Breath");
+
+			//			// Shift all items after lastButtonIndex forward by one
+			//			// First, we need to make room in the items array
+			//			for (int i = menu->itemCount; i > lastButtonIndex + 1; i--) {
+			//				menu->items[i] = menu->items[i - 1];
+			//			}
+			//			newItem->window.rect->y += 15.f;
+			//			// Insert our new item right after the last button
+			//			menu->items[lastButtonIndex + 1] = newItem;
+
+			//			// Increment item count
+			//			menu->itemCount++;
+
+			//			printf("Successfully duplicated button and inserted 'Sprint and Breath' at index %d\n", lastButtonIndex + 1);
+			//		}
+			//	}
+			//	});
 
 
 			Memory::VP::InjectHook(exe(0x004B4B04), CG_GetWeaponVerticalBobFactor_sprint);
