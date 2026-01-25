@@ -184,6 +184,13 @@ namespace game {
 	WEAK symbol<void(const char* command_name, void(__cdecl* function)())> Cmd_AddCommand{ 0x41BB00 };
 	WEAK symbol<void(void* Block)> Z_Free_internal{ 0x4266A0 };
 	WEAK symbol<const char*(const char* string)> String_Alloc{ 0x4D4570 };
+
+	WEAK symbol<void* (uint32_t size, uint32_t alignment)> Hunk_AllocAlignInternal{ 0x426F30 };
+
+	inline void* UI_Alloc(uint32_t size, uint32_t alignment) {
+		return game::Hunk_AllocAlignInternal(size, alignment);
+	}
+
 	inline void Z_Free(void* Block) {
 		Z_Free_internal(Block);
 	}

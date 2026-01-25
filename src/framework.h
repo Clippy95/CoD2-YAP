@@ -72,19 +72,21 @@ union itemDefData_t
 
 struct rectDef_s
 {
-	uint32_t x;
-	uint32_t y;
-	uint32_t w;
-	uint32_t h;
+	float x;
+	float y;
+	float w;
+	float h;
 	uint32_t horzAlign;
 	uint32_t vertAlign;
 };
 
 struct windowDef_t
 {
-	char rect[96];
-	char rectClient[96];
+	rectDef_s rect[4];
+	rectDef_s rectClient[4];
 	const char* name;
+/*	char rect[96];
+	char rectClient[96]*/;
 	const char* group;
 	const char* cinematicName;
 	const char* cinematic;
@@ -106,6 +108,8 @@ struct windowDef_t
 	uint32_t background;
 };
 
+struct menuDef_t;
+
 struct itemDef_s
 {
 	//char window[528];
@@ -123,7 +127,7 @@ struct itemDef_s
 	uint32_t textStyle;
 	const char* text;
 	uint32_t textSavegameInfo;
-	uint32_t parent;
+	menuDef_t *parent;
 	const char* mouseEnterText;
 	const char* mouseExitText;
 	const char* mouseEnter;
@@ -142,4 +146,28 @@ struct itemDef_s
 	char cursorPos[16];
 	itemDefData_t typeData;
 	uint32_t imageTrack;
+};
+
+struct menuDef_t
+{
+	windowDef_t window;
+	int32_t font;
+	int32_t fullScreen;
+	uint32_t itemCount;
+	uint32_t fontIndex;
+	uint8_t cursorItem[16];
+	int32_t fadeCycle;
+	int32_t fadeClamp;
+	int32_t fadeAmount;
+	int32_t fadeInAmount;
+	int32_t blurRadius;
+	const char* onOpen;
+	const char* onClose;
+	const char* onESC;
+	const char* onKey;
+	char soundName[4];
+	int32_t imageTrack;
+	vec4_t focusColor;
+	vec4_t disableColor;
+	itemDef_s** items;
 };

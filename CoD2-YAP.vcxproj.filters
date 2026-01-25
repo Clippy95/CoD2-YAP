@@ -87,6 +87,12 @@
     <ClInclude Include="src\dvar_descriptions.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\include\shared\menudef.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\include\shared\ui\menudefinition.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\dllmain.cpp">

@@ -47,6 +47,7 @@ public:
 	static void post_gfx();
 	static void pre_destroy();
 	static void clean();
+	static void after_item_parse(itemDef_s* this_item);
 
 	static void* load_import(const std::string& library, const std::string& function);
 

@@ -1,4 +1,5 @@
 #pragma once
+#include "..\framework.h"
 #include <helper.hpp>
 #include <string>
 
@@ -30,6 +31,10 @@ public:
 	}
 
 	virtual void post_cg_init()
+	{
+	}
+
+	virtual void after_item_parse(itemDef_s* item)
 	{
 	}
 

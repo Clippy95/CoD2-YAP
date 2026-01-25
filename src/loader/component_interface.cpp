@@ -1,5 +1,5 @@
 #include "component_loader.h"
-
+#include "..\framework.h"
 void component_loader::register_component(std::unique_ptr<component_interface>&& component_)
 {
 	get_components().push_back(std::move(component_));
@@ -71,6 +71,12 @@ void component_loader::post_cg_init()
 {
 	for (const auto& component_ : get_components())
 		component_->post_cg_init();
+}
+
+void component_loader::after_item_parse(itemDef_s* this_item)
+{
+	for (const auto& component_ : get_components())
+		component_->after_item_parse(this_item);
 }
 
 void component_loader::pre_destroy()

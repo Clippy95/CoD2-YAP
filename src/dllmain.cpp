@@ -11,6 +11,8 @@
 
 #include "buildnumber.h"
 
+#include "cexception.hpp"
+
 uintptr_t exe(uintptr_t sp) {
     return sp;
 }
@@ -178,6 +180,8 @@ void Init() {
 
     if (value != 0x57675868)
         return;
+
+    SetUnhandledExceptionFilter(CustomUnhandledExceptionFilter);
 
     FreeLibraryD = safetyhook::create_inline(FreeLibrary, FreeLibraryHook);
     LoadLibraryD = safetyhook::create_inline(LoadLibraryA, LoadLibraryHook);

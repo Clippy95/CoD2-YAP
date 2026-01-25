@@ -417,36 +417,40 @@ namespace saves {
 
             static auto Item_Parse = safetyhook::create_mid(exe(0x4D115C), [](SafetyHookContext& ctx) {
 
-                itemDef_s* item = *(itemDef_s**)(ctx.esp + 0x428);
                 
-                if (item && item->window.name && !strcmp(item->window.name, "loadgame")) {
-                    printf("menu %s\n", item->window.name);
 
-                    if (item->dvar) {
-                        printf("dvar %s\n", item->dvar);
-                        //game::Z_Free(item->dvar);
-                    }
-
-                    if (item->dvarTest) {
-                        game::Z_Free(item->dvarTest);
-                        item->dvarTest = game::String_Alloc("yap_save_show_savemenu");
-                        printf("dvarTest %s\n", item->dvarTest);
-                        
-                        //item->dvarTest = NULL;
-
-                    }
-
-                    if (item->enableDvar) {
-                        printf("enableDvar %s\n", item->enableDvar);
-                        //game::Z_Free(item->enableDvar);
-                        //item->enableDvar = NULL;
-                    }
-                }
+                itemDef_s* item = *(itemDef_s**)(ctx.esp + 0x428);
+                component_loader::after_item_parse(item);
                 });
                 
 
 		}
+        void after_item_parse(itemDef_s* this_item) override {
+            auto item = this_item;
+            if (item && item->window.name && !strcmp(item->window.name, "loadgame")) {
+                printf("menu %s\n", item->window.name);
 
+                if (item->dvar) {
+                    printf("dvar %s\n", item->dvar);
+                    //game::Z_Free(item->dvar);
+                }
+
+                if (item->dvarTest) {
+                    game::Z_Free(item->dvarTest);
+                    item->dvarTest = game::String_Alloc("yap_save_show_savemenu");
+                    printf("dvarTest %s\n", item->dvarTest);
+
+                    //item->dvarTest = NULL;
+
+                }
+
+                if (item->enableDvar) {
+                    printf("enableDvar %s 0x%X\n", item->enableDvar, item->dvarFlags);
+                    //game::Z_Free(item->enableDvar);
+                    //item->enableDvar = NULL;
+                }
+            }
+        }
 
 
 	};
