@@ -182,7 +182,127 @@ namespace game {
 	//WEAK symbol<qhandle_t> whiteShader{ 0x48422E8 };
 
 	WEAK symbol<void(const char* command_name, void(__cdecl* function)())> Cmd_AddCommand{ 0x41BB00 };
+	WEAK symbol<void(void* Block)> Z_Free_internal{ 0x4266A0 };
+	WEAK symbol<const char*(const char* string)> String_Alloc{ 0x4D4570 };
+	inline void Z_Free(void* Block) {
+		Z_Free_internal(Block);
+	}
 
+	inline void Z_Free(const void* Block) {
+		Z_Free((void*)Block);
+	}
+
+    enum {
+        K_TAB = 9,
+        K_ENTER = 13,
+        K_ESCAPE = 27,
+        K_SPACE = 32,
+        K_BACKSPACE = 127,
+        K_UPARROW = 154,
+        K_DOWNARROW = 155,
+        K_LEFTARROW = 156,
+        K_RIGHTARROW = 157,
+        K_ALT = 158,
+        K_CTRL = 159,
+        K_SHIFT = 160,
+        K_CAPSLOCK = 151,
+        K_F1 = 167,
+        K_F2 = 168,
+        K_F3 = 169,
+        K_F4 = 170,
+        K_F5 = 171,
+        K_F6 = 172,
+        K_F7 = 173,
+        K_F8 = 174,
+        K_F9 = 175,
+        K_F10 = 176,
+        K_F11 = 177,
+        K_F12 = 178,
+        K_F13 = 179,
+        K_F14 = 180,
+        K_F15 = 181,
+        K_INS = 161,
+        K_DEL = 162,
+        K_PGDN = 163,
+        K_PGUP = 164,
+        K_HOME = 165,
+        K_END = 166,
+        K_MOUSE1 = 200,
+        K_MOUSE2 = 201,
+        K_MOUSE3 = 202,
+        K_MOUSE4 = 203,
+        K_MOUSE5 = 204,
+        K_MWHEELUP = 206,
+        K_MWHEELDOWN = 205,
+        K_AUX1 = 207,
+        K_AUX2 = 208,
+        K_AUX3 = 209,
+        K_AUX4 = 210,
+        K_AUX5 = 211,
+        K_AUX6 = 212,
+        K_AUX7 = 213,
+        K_AUX8 = 214,
+        K_AUX9 = 215,
+        K_AUX10 = 216,
+        K_AUX11 = 217,
+        K_AUX12 = 218,
+        K_AUX13 = 219,
+        K_AUX14 = 220,
+        K_AUX15 = 221,
+        K_AUX16 = 222,
+        K_KP_HOME = 182,
+        K_KP_UPARROW = 183,
+        K_KP_PGUP = 184,
+        K_KP_LEFTARROW = 185,
+        K_KP_5 = 186,
+        K_KP_RIGHTARROW = 187,
+        K_KP_END = 188,
+        K_KP_DOWNARROW = 189,
+        K_KP_PGDN = 190,
+        K_KP_ENTER = 191,
+        K_KP_INS = 192,
+        K_KP_DEL = 193,
+        K_KP_SLASH = 194,
+        K_KP_MINUS = 195,
+        K_KP_PLUS = 196,
+        K_KP_NUMLOCK = 197,
+        K_KP_STAR = 198,
+        K_KP_EQUALS = 199,
+        K_PAUSE = 153,
+        K_SEMICOLON = 59,
+        K_COMMAND = 150,
+        K_181 = 128,
+        K_191 = 129,
+        K_223 = 130,
+        K_224 = 131,
+        K_225 = 132,
+        K_228 = 133,
+        K_229 = 134,
+        K_230 = 135,
+        K_231 = 136,
+        K_232 = 137,
+        K_233 = 138,
+        K_236 = 139,
+        K_241 = 140,
+        K_242 = 141,
+        K_243 = 142,
+        K_246 = 143,
+        K_248 = 144,
+        K_249 = 145,
+        K_250 = 146,
+        K_252 = 147,
+    };
+
+    struct binding_s
+    {
+        const char* binding_command;
+        int key1_default;
+        int key2_default;
+        int key1;
+        int key2;
+    };
+
+	extern binding_s* GetModdedBindings(uint32_t& current_size);
 
 
 }

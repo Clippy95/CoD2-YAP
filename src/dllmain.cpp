@@ -181,8 +181,8 @@ void Init() {
 
     FreeLibraryD = safetyhook::create_inline(FreeLibrary, FreeLibraryHook);
     LoadLibraryD = safetyhook::create_inline(LoadLibraryA, LoadLibraryHook);
-    component_loader::post_start();
     OpenConsoleAndRedirectIO();
+    component_loader::post_start();
     Memory::VP::InterceptCall(0x4A3999, CG_init_ptr, CG_Init_stub);
 
     Memory::InterceptCall(exe(0x4509AF), post_sv_cheats_first_addr, post_sv_cheats_first);

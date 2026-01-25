@@ -408,7 +408,6 @@ namespace sprint {
 
 		bool isLastEntry = false;
 		int result = I_stricmp(0x7FFFFFFF, main_string, changing);
-
 		if (result && main_string == (const char*)0x5A51F8 || changing == (const char*)0x5A51F8) {
 			isLastEntry = true;
 		}
@@ -441,10 +440,12 @@ namespace sprint {
 	int GetKeyBindingLocalizedString(const char* command_name, char (*string)[128]) {
 		int result;
 		__asm {
+			pushad
 			mov ecx, command_name
 			mov esi, string
 			call GetKeyBindingLocal_addr
 			mov result,eax
+			popad
 		}
 
 		return result;
@@ -458,10 +459,10 @@ namespace sprint {
 			mov ecx_og, ecx
 			mov esi_og, esi
 		}
-		//auto result = GetKeyBindingLocalizedString((const char*)ecx_og, (char (*)[128])esi_og);
+		auto result = GetKeyBindingLocalizedString((const char*)ecx_og, (char (*)[128])esi_og);
 
-		//if (!result)
-			auto result = GetKeyBindingLocalizedString("+" s_SPRINT_AND_BREATH, (char (*)[128])esi_og);
+		if (!result)
+			 result = GetKeyBindingLocalizedString("+" s_SPRINT_AND_BREATH, (char (*)[128])esi_og);
 
 		return result;
 
@@ -983,6 +984,87 @@ uintptr_t stance_sprint_shader = 0;
 
 	}
 
+	struct binding_s_XRef {
+		uintptr_t patch_location;  // Exact address of the 4-byte operand to patch
+		size_t offset;             // Offset from new base
+	};
+
+	binding_s_XRef binding_s_xrefs[] = {
+		{ 0x004CD855, 0x000C },  // mov     esi, offset g_bindings.key1 -> 0x005A4E94
+		{ 0x004CD89B, 0x0010 },  // mov     esi, offset g_bindings.key2 -> 0x005A4E98
+		{ 0x004CD921, 0x000C },  // mov     eax, offset g_bindings.key1 -> 0x005A4E94
+		{ 0x004CD945, 0x0000 },  // mov     esi, offset g_bindings -> 0x005A4E88
+		{ 0x004CD991, 0x0000 },  // mov     edi, offset g_bindings -> 0x005A4E88
+		{ 0x004CD9F0, 0x000C },  // mov     eax, ss:g_bindings.key1[ebp] -> 0x005A4E94
+		{ 0x004CDA24, 0x0010 },  // mov     eax, ss:g_bindings.key2[ebp] -> 0x005A4E98
+		{ 0x004CDAE5, 0x0000 },  // mov     esi, offset g_bindings -> 0x005A4E88
+		{ 0x004CDB19, 0x000C },  // cmp     g_bindings.key1[eax*4], 0FFFFFFFFh -> 0x005A4E94
+		{ 0x004CDB48, 0x0000 },  // mov     esi, offset g_bindings -> 0x005A4E88
+		{ 0x004CDB99, 0x000C },  // mov     eax, g_bindings.key1[esi] -> 0x005A4E94
+		{ 0x004CDBBB, 0x0010 },  // mov     eax, g_bindings.key2[esi] -> 0x005A4E98
+		{ 0x004CE195, 0x0010 },  // mov     eax, offset g_bindings.key2 -> 0x005A4E98
+		{ 0x004CE1E4, 0x000C },  // mov     eax, g_bindings.key1[esi] -> 0x005A4E94
+		{ 0x004CE1FA, 0x000C },  // mov     g_bindings.key1[esi], edi -> 0x005A4E94
+		{ 0x004CE200, 0x0010 },  // mov     eax, g_bindings.key2[esi] -> 0x005A4E98
+		{ 0x004CE21C, 0x000C },  // mov     g_bindings.key1[esi], edi -> 0x005A4E94
+		{ 0x004CE228, 0x0010 },  // cmp     g_bindings.key2[esi], 0FFFFFFFFh -> 0x005A4E98
+		{ 0x004CE231, 0x0010 },  // mov     g_bindings.key2[esi], edi -> 0x005A4E98
+		{ 0x004CE243, 0x0010 },  // mov     eax, g_bindings.key2[esi] -> 0x005A4E98
+		{ 0x004CE253, 0x000C },  // mov     g_bindings.key1[esi], edi -> 0x005A4E94
+		{ 0x004CE259, 0x0010 },  // mov     g_bindings.key2[esi], 0FFFFFFFFh -> 0x005A4E98
+	};
+
+	const size_t binding_s_xref_count = sizeof(binding_s_xrefs) / sizeof(binding_s_xrefs[0]);
+
+
+
+
+	void patch_binding_s_references(void* new_base, size_t array_count) {
+		// Patch all structure field references
+		for (size_t i = 0; i < binding_s_xref_count; i++) {
+			void* patch_addr = (void*)binding_s_xrefs[i].patch_location;
+			void* new_value = (void*)((uintptr_t)new_base + binding_s_xrefs[i].offset);
+			Memory::VP::Patch<void*>(patch_addr, new_value);
+			printf("Patched 0x%p -> 0x%p (offset +0x%zX)\n",
+				patch_addr, new_value, binding_s_xrefs[i].offset);
+		}
+
+		// Calculate end addresses for different field iterations
+		void* array_end = (void*)((uintptr_t)new_base + (array_count * sizeof(game::binding_s)));
+
+		// 0x5A520C: End of array (base iteration)
+		void* new_end_0x5A520C = array_end;
+
+		// 0x5A5218: End when iterating from key1 offset (+0x0C from array_end)
+		void* new_end_0x5A5218 = (void*)((uintptr_t)array_end + 0x0C);
+
+		// 0x5A521C: End when iterating from key2 offset (+0x10 from array_end)
+		void* new_end_0x5A521C = (void*)((uintptr_t)array_end + 0x10);
+
+		// Patch all end-of-array comparisons
+
+		// Original end checks (0x5A520C)
+		Memory::VP::Patch<void*>((void*)0x004CD968, new_end_0x5A520C);
+		Memory::VP::Patch<void*>((void*)0x004CD9BD, new_end_0x5A520C);
+		Memory::VP::Patch<void*>((void*)0x004CDB08, new_end_0x5A520C);
+		Memory::VP::Patch<void*>((void*)0x004CDB6A, new_end_0x5A520C);
+
+		// Controls_GetConfig - key1 iteration (0x5A5218)
+		Memory::VP::Patch<void*>((void*)0x004CD883, new_end_0x5A5218);  // cmp esi, offset dword_5A5218
+		Memory::VP::Patch<void*>((void*)0x004CD935, new_end_0x5A5218);  // cmp eax, offset dword_5A5218
+
+		// sub_4CD890 - key2 iteration (0x5A521C)
+		Memory::VP::Patch<void*>((void*)0x004CD8FE, new_end_0x5A521C);  // cmp esi, offset off_5A521C
+		Memory::VP::Patch<void*>((void*)0x004CE1BF, new_end_0x5A521C);  // cmp eax, offset off_5A521C
+
+		printf("Patched end-of-array references:\n");
+		printf("  0x5A520C -> 0x%p (array end)\n", new_end_0x5A520C);
+		printf("  0x5A5218 -> 0x%p (key1 iteration end)\n", new_end_0x5A5218);
+		printf("  0x5A521C -> 0x%p (key2 iteration end)\n", new_end_0x5A521C);
+		printf("  Base: 0x%p, Count: %zu entries\n", new_base, array_count);
+	}
+
+
 	class component final : public component_interface
 	{
 	public:
@@ -1049,7 +1131,9 @@ uintptr_t stance_sprint_shader = 0;
 		}
 
 		void post_start() override {
-
+			uint32_t arraysize = 0;
+			auto moddebindings = game::GetModdedBindings(arraysize);
+			patch_binding_s_references(moddebindings, arraysize);
 			PM_UpdateAimDownSightFlagD = safetyhook::create_inline(exe(0x4DD020), PM_UpdateAimDownSightFlag_stub);
 
 			static auto registering_graphics = safetyhook::create_mid(0x4A2ECE, [](SafetyHookContext& ctx) {
@@ -1064,8 +1148,8 @@ uintptr_t stance_sprint_shader = 0;
 
 			Memory::VP::Patch<void*>(exe((0x40A1A0 + 1)), IN_HoldBreath_Down);
 			Memory::VP::Patch<void*>(exe((0x40A1AF + 1)), IN_HoldBreath_Up);
-			//Memory::VP::InjectHook(0x4A9EE7, GetKeyBindingLocalizedString_meleebreath_stub);
-			Memory::VP::InjectHook(0x4CDB5B, I_stricmp_new_custom_bindings);
+			Memory::VP::InjectHook(0x4A9EE7, GetKeyBindingLocalizedString_meleebreath_stub);
+
 			static auto CG_CheckPlayerStanceChange = safetyhook::create_mid(0x4BE445, [](SafetyHookContext& ctx) {
 
 				bool isSprinting = yap_is_sprinting();
