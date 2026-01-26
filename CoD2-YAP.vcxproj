@@ -173,6 +173,7 @@ popd</Command>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\cexception.hpp" />
     <ClInclude Include="src\dvars.h" />
     <ClInclude Include="src\dvar_descriptions.h" />
     <ClInclude Include="src\framework.h" />
