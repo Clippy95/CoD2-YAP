@@ -55,5 +55,18 @@ namespace game {
          current_size = ARRAYSIZE(g_bindings);
          return g_bindings;
      }
+     uintptr_t UI_SafeTranslateString_addr = 0x4C6A20;
+     const char* UI_SafeTranslateString(const char* string) {
+         const char* result;
+         __asm 
+         { 
+             mov eax, string
+             call UI_SafeTranslateString_addr
+             mov result,eax
+         }
+         return result;
+            
+
+     }
 
 }

@@ -198,6 +198,40 @@ namespace game {
 	inline void Z_Free(const void* Block) {
 		Z_Free((void*)Block);
 	}
+	extern const char* UI_SafeTranslateString(const char* string);
+
+	inline const char* UI_SafeTranslateString(const char* string, const char* fallback, bool& found) 
+	{
+
+		auto result = UI_SafeTranslateString(string);
+
+		if (fallback) {
+			found = strcmp(result, string) != 0;
+
+			if (!found) {
+				result = UI_SafeTranslateString(fallback);
+				if (strcmp(fallback, result)) {
+					result = fallback;
+				}
+			}
+
+		}
+		return result;
+	}
+
+	// expects @ at the start, RETURN ISN'T ISN'T MEMORY SAFE!!
+	inline const char* Menu_SafeTranslateString(const char* string, const char* fallback)
+	{
+
+		uintptr_t ptr = (uintptr_t)string;
+		bool found = false;
+		auto result = UI_SafeTranslateString((const char*)(ptr + 1), fallback, found);
+		printf("found %d\n", found);
+		if (found)
+			return string;
+		return fallback;
+		
+	}
 
     enum {
         K_TAB = 9,

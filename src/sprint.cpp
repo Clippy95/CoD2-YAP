@@ -141,6 +141,161 @@ namespace sprint {
 
 	dvar_s* yay_sprint_display_icon;
 
+	dvar_s* timers_yap_sprint_int;
+
+	static int lastRealTime = 0;
+	namespace sprint_timers {
+		// Timer indices in the first vec4
+		enum TimerIndex {
+			LAST_REAL_TIME = 0,
+			LAST_SPRINT_TIME = 1,
+			LAST_COMMAND_TIME = 2,
+			LAST_UPDATE_TIME = 3
+		};
+
+		// State indices in the second vec4
+		enum StateIndex {
+			SPRINT_FATIGUE = 0,
+			PREVENT_FATIGUE_REGEN = 1,
+			WAS_SPRINTING = 2,
+			UNUSED = 3
+		};
+
+		dvar_s* timers_yap_sprint_state;
+
+		void init_state_dvar() {
+			if (!timers_yap_sprint_state) {
+				timers_yap_sprint_state = dvars::Dvar_RegisterVec4("timers_yap_sprint_state", 1.0f, 0, 0, 0, -FLT_MAX, FLT_MAX, DVAR_SCRIPTINFO | DVAR_NOWRITE, "DO NOT TOUCH THIS!!");
+			}
+		}
+
+		void save_timers() {
+			if (!timers_yap_sprint_int || !timers_yap_sprint_state) return;
+
+			// Save timers
+			timers_yap_sprint_int->value.vec4[LAST_REAL_TIME] = *(float*)&lastRealTime;
+			timers_yap_sprint_int->value.vec4[LAST_SPRINT_TIME] = *(float*)&g_sprintState.lastSprintTime;
+			timers_yap_sprint_int->value.vec4[LAST_COMMAND_TIME] = *(float*)&g_sprintState.lastCommandTime;
+			timers_yap_sprint_int->value.vec4[LAST_UPDATE_TIME] = *(float*)&g_sprintState.lastUpdateTime;
+
+			timers_yap_sprint_int->latchedValue.vec4[LAST_REAL_TIME] = timers_yap_sprint_int->value.vec4[LAST_REAL_TIME];
+			timers_yap_sprint_int->latchedValue.vec4[LAST_SPRINT_TIME] = timers_yap_sprint_int->value.vec4[LAST_SPRINT_TIME];
+			timers_yap_sprint_int->latchedValue.vec4[LAST_COMMAND_TIME] = timers_yap_sprint_int->value.vec4[LAST_COMMAND_TIME];
+			timers_yap_sprint_int->latchedValue.vec4[LAST_UPDATE_TIME] = timers_yap_sprint_int->value.vec4[LAST_UPDATE_TIME];
+
+			// Save state
+			timers_yap_sprint_state->value.vec4[SPRINT_FATIGUE] = g_sprintState.SprintFaituge;
+			timers_yap_sprint_state->value.vec4[PREVENT_FATIGUE_REGEN] = g_sprintState.preventFatigueRegen ? 1.0f : 0.0f;
+			timers_yap_sprint_state->value.vec4[WAS_SPRINTING] = g_sprintState.wasSprinting ? 1.0f : 0.0f;
+
+			timers_yap_sprint_state->latchedValue.vec4[SPRINT_FATIGUE] = timers_yap_sprint_state->value.vec4[SPRINT_FATIGUE];
+			timers_yap_sprint_state->latchedValue.vec4[PREVENT_FATIGUE_REGEN] = timers_yap_sprint_state->value.vec4[PREVENT_FATIGUE_REGEN];
+			timers_yap_sprint_state->latchedValue.vec4[WAS_SPRINTING] = timers_yap_sprint_state->value.vec4[WAS_SPRINTING];
+		}
+
+		void load_timers() {
+			if (!timers_yap_sprint_int || !timers_yap_sprint_state) return;
+
+			// Load timers
+			lastRealTime = *(int*)&timers_yap_sprint_int->value.vec4[LAST_REAL_TIME];
+			g_sprintState.lastSprintTime = *(uint32_t*)&timers_yap_sprint_int->value.vec4[LAST_SPRINT_TIME];
+			g_sprintState.lastCommandTime = *(int*)&timers_yap_sprint_int->value.vec4[LAST_COMMAND_TIME];
+			g_sprintState.lastUpdateTime = *(int*)&timers_yap_sprint_int->value.vec4[LAST_UPDATE_TIME];
+
+			// Load state
+			g_sprintState.SprintFaituge = timers_yap_sprint_state->value.vec4[SPRINT_FATIGUE];
+			g_sprintState.preventFatigueRegen = timers_yap_sprint_state->value.vec4[PREVENT_FATIGUE_REGEN] != 0.0f;
+			g_sprintState.wasSprinting = timers_yap_sprint_state->value.vec4[WAS_SPRINTING] != 0.0f;
+		}
+
+		int& get_last_real_time() {
+			if (yap_sprint_enable && yap_sprint_enable->value.integer == 1) {
+				return *(int*)&timers_yap_sprint_int->value.vec4[LAST_REAL_TIME];
+			}
+			return lastRealTime;
+		}
+
+		void set_last_real_time(int value) {
+			if (yap_sprint_enable && yap_sprint_enable->value.integer == 1) {
+				timers_yap_sprint_int->value.vec4[LAST_REAL_TIME] = *(float*)&value;
+				timers_yap_sprint_int->latchedValue.vec4[LAST_REAL_TIME] = timers_yap_sprint_int->value.vec4[LAST_REAL_TIME];
+			}
+			else {
+				lastRealTime = value;
+			}
+		}
+
+		uint32_t& get_last_sprint_time() {
+			if (yap_sprint_enable && yap_sprint_enable->value.integer == 1) {
+				return *(uint32_t*)&timers_yap_sprint_int->value.vec4[LAST_SPRINT_TIME];
+			}
+			return g_sprintState.lastSprintTime;
+		}
+
+		void set_last_sprint_time(uint32_t value) {
+			if (yap_sprint_enable && yap_sprint_enable->value.integer == 1) {
+				timers_yap_sprint_int->value.vec4[LAST_SPRINT_TIME] = *(float*)&value;
+				timers_yap_sprint_int->latchedValue.vec4[LAST_SPRINT_TIME] = timers_yap_sprint_int->value.vec4[LAST_SPRINT_TIME];
+			}
+			else {
+				g_sprintState.lastSprintTime = value;
+			}
+		}
+
+		float get_sprint_fatigue() {
+			if (yap_sprint_enable && yap_sprint_enable->value.integer == 1) {
+				return timers_yap_sprint_state->value.vec4[SPRINT_FATIGUE];
+			}
+			return g_sprintState.SprintFaituge;
+		}
+
+		void set_sprint_fatigue(float value) {
+			if (yap_sprint_enable && yap_sprint_enable->value.integer == 1) {
+				timers_yap_sprint_state->value.vec4[SPRINT_FATIGUE] = value;
+				timers_yap_sprint_state->latchedValue.vec4[SPRINT_FATIGUE] = value;
+			}
+			else {
+				g_sprintState.SprintFaituge = value;
+			}
+		}
+
+		bool get_prevent_fatigue_regen() {
+			if (yap_sprint_enable && yap_sprint_enable->value.integer == 1) {
+				return timers_yap_sprint_state->value.vec4[PREVENT_FATIGUE_REGEN] != 0.0f;
+			}
+			return g_sprintState.preventFatigueRegen;
+		}
+
+		void set_prevent_fatigue_regen(bool value) {
+			if (yap_sprint_enable && yap_sprint_enable->value.integer == 1) {
+				float fval = value ? 1.0f : 0.0f;
+				timers_yap_sprint_state->value.vec4[PREVENT_FATIGUE_REGEN] = fval;
+				timers_yap_sprint_state->latchedValue.vec4[PREVENT_FATIGUE_REGEN] = fval;
+			}
+			else {
+				g_sprintState.preventFatigueRegen = value;
+			}
+		}
+
+		bool get_was_sprinting() {
+			if (yap_sprint_enable && yap_sprint_enable->value.integer == 1) {
+				return timers_yap_sprint_state->value.vec4[WAS_SPRINTING] != 0.0f;
+			}
+			return g_sprintState.wasSprinting;
+		}
+
+		void set_was_sprinting(bool value) {
+			if (yap_sprint_enable && yap_sprint_enable->value.integer == 1) {
+				float fval = value ? 1.0f : 0.0f;
+				timers_yap_sprint_state->value.vec4[WAS_SPRINTING] = fval;
+				timers_yap_sprint_state->latchedValue.vec4[WAS_SPRINTING] = fval;
+			}
+			else {
+				g_sprintState.wasSprinting = value;
+			}
+		}
+	}
+
 	void set_sprinting(bool sprinting) {
 		yap_sprint_is_sprinting->value.integer = sprinting ? 1 : 0;
 		yap_sprint_is_sprinting->latchedValue.integer = sprinting ? 1 : 0;
@@ -153,7 +308,7 @@ namespace sprint {
 
 
 	bool can_sprint() {
-		return g_sprintState.SprintFaituge >= yap_sprint_fatigue_min_threshold->value.decimal;
+		return sprint_timers::get_sprint_fatigue() >= yap_sprint_fatigue_min_threshold->value.decimal;
 	}
 
 	struct eWeaponDef {
@@ -706,7 +861,6 @@ namespace sprint {
 
 		bool wantsToSprint = tryingToMove && (pm->cmd.buttons & CMD_SPRINT);
 
-		// Check ADS state - thing[46] is ADS fraction (0.0 = not ADS, 1.0 = full ADS)
 		float* thing = (float*)pm->ps;
 		float adsFraction = thing[46];
 		bool isADS = adsFraction >= 0.1f;
@@ -718,29 +872,25 @@ namespace sprint {
 		AllowedToSprint = AllowedToSprint && (pm->ps->leanf == 0.f);
 
 		if (wantsToSprint && can_sprint() && AllowedToSprint) {
-			// Activate sprinting only if not in ADS
 			pm->ps->pm_flags |= PMF_SPRINTING;
 			set_sprinting(true);
-			g_sprintState.preventFatigueRegen = false; // Allow regen when successfully sprinting
+			sprint_timers::set_prevent_fatigue_regen(false);
 		}
 		else {
-			// Deactivate sprinting (ADS, no fatigue, or not wanting to sprint)
 			pm->ps->pm_flags &= ~PMF_SPRINTING;
 			set_sprinting(false);
 
-			// If player wants to sprint but can't (exhausted), prevent fatigue regen
 			if (wantsToSprint && !can_sprint() && AllowedToSprint) {
-				g_sprintState.preventFatigueRegen = true;
+				sprint_timers::set_prevent_fatigue_regen(true);
 			}
 			else {
-				// Player let go of sprint or is in ADS, allow regen
-				g_sprintState.preventFatigueRegen = false;
+				sprint_timers::set_prevent_fatigue_regen(false);
 			}
 		}
 
 		if (dvars::developer && dvars::developer->value.integer) {
 			printf("pm_flags 0x%X adsFrac: %.3f %d, wantsSprint: %d, canSprint: %d, isADS: %d, preventRegen: %d\n",
-				pm->ps->pm_flags, adsFraction, pm->ps->commandTime, wantsToSprint, can_sprint(), isADS, g_sprintState.preventFatigueRegen);
+				pm->ps->pm_flags, adsFraction, pm->ps->commandTime, wantsToSprint, can_sprint(), isADS, sprint_timers::get_prevent_fatigue_regen());
 		}
 	}
 
@@ -753,21 +903,19 @@ namespace sprint {
 			return;
 		}
 
-		static int lastRealTime = 0;
+		int lastRealTime_val = sprint_timers::get_last_real_time();
+		int realTime = *(int*)0xF708DC;
 
-		// How would this work in a server/MP lol this sprint is really only meant for SP... atm
-		int realTime = *(int*)0xF708DC; // cgameGlob->time
-
-		if (lastRealTime == 0) {
-			lastRealTime = realTime;
+		if (lastRealTime_val == 0) {
+			sprint_timers::set_last_real_time(realTime);
 			return;
 		}
 
-		if (realTime == lastRealTime)
+		if (realTime == lastRealTime_val)
 			return;
 
-		int frameDeltaMs = realTime - lastRealTime;
-		lastRealTime = realTime;
+		int frameDeltaMs = realTime - lastRealTime_val;
+		sprint_timers::set_last_real_time(realTime);
 
 		if (frameDeltaMs <= 0 || frameDeltaMs > 1000)
 			return;
@@ -780,33 +928,40 @@ namespace sprint {
 		bool is_moving = yap_sprint_fatigue_drainonmove->value.integer ? speedSquared > threshold : true;
 
 		if (yap_is_sprinting()) {
-			if (is_moving){
-				g_sprintState.lastSprintTime = realTime;
+			if (is_moving) {
+				sprint_timers::set_last_sprint_time(realTime);
 
-			float drainAmount = frameTimeSec * yap_sprint_fatigue_drain_rate->value.decimal;
-			g_sprintState.SprintFaituge -= drainAmount;
+				float currentFatigue = sprint_timers::get_sprint_fatigue();
+				float drainAmount = frameTimeSec * yap_sprint_fatigue_drain_rate->value.decimal;
+				currentFatigue -= drainAmount;
 
-			if (g_sprintState.SprintFaituge < 0.0f) {
-				g_sprintState.SprintFaituge = 0.0f;
-				set_sprinting(false);
-				pm->ps->pm_flags &= ~PMF_SPRINTING;
+				if (currentFatigue < 0.0f) {
+					currentFatigue = 0.0f;
+					set_sprinting(false);
+					pm->ps->pm_flags &= ~PMF_SPRINTING;
+				}
+
+				sprint_timers::set_sprint_fatigue(currentFatigue);
+				sprint_timers::set_prevent_fatigue_regen(false);
 			}
-			g_sprintState.preventFatigueRegen = false;
-	}
 		}
 		else {
-			float timeSinceLastSprint = (realTime - g_sprintState.lastSprintTime) * 0.001f;
+			uint32_t lastSprintTime = sprint_timers::get_last_sprint_time();
+			float timeSinceLastSprint = (realTime - lastSprintTime) * 0.001f;
 
-			if (!g_sprintState.preventFatigueRegen &&
+			if (!sprint_timers::get_prevent_fatigue_regen() &&
 				timeSinceLastSprint >= yap_sprint_fatigue_regen_delay->value.decimal) {
 
-				g_sprintState.SprintFaituge += frameTimeSec * yap_sprint_fatigue_regen_rate->value.decimal;
-				if (g_sprintState.SprintFaituge > 1.0f) {
-					g_sprintState.SprintFaituge = 1.0f;
+				float currentFatigue = sprint_timers::get_sprint_fatigue();
+				currentFatigue += frameTimeSec * yap_sprint_fatigue_regen_rate->value.decimal;
+				if (currentFatigue > 1.0f) {
+					currentFatigue = 1.0f;
 				}
+				sprint_timers::set_sprint_fatigue(currentFatigue);
 			}
 		}
 	}
+
 
 
 
@@ -902,33 +1057,31 @@ constexpr auto GREY_MAYBE = 0.6f;
 
 uintptr_t stance_sprint_shader = 0;
 
-	void UI_DrawHandlePic_stub(float x, float y, float w, float h, vec4_t* color, void* shader) {
-		int ebx_og;
-		int edi_og;
-		__asm {
-			mov ebx_og, ebx
-			mov edi_og, edi
-		}
-
-		vec4_t dem_color = { GREY_MAYBE,GREY_MAYBE,GREY_MAYBE,1.f };
-
-		float fatiguePercent = g_sprintState.SprintFaituge; // 0.0 to 1.0
-
-		if (yay_sprint_display_icon && yay_sprint_display_icon->value.integer && yap_is_sprinting()) {
-			shader = (void*)stance_sprint_shader;
-		}
-
-		UI_DrawHandlePic_with_t(x, y, w, h, ebx_og, edi_og, 1.f, 1.f, 1.f, 1.f, &dem_color, shader);
-		// this down here is the white one
-		float filledHeight = h * fatiguePercent;
-		float emptyHeight = h * (1.0f - fatiguePercent);
-
-		// Start at y + emptyHeight to position at bottom, fill upwards
-		// s0=0, t0=1-fatiguePercent (skip top portion of texture), s1=1, t1=1
-		UI_DrawHandlePic_with_t(x, y + emptyHeight, w, filledHeight, ebx_og, edi_og,
-			0.f, 1.0f - fatiguePercent, 1.f, 1.f,
-			color, shader, true);
+void UI_DrawHandlePic_stub(float x, float y, float w, float h, vec4_t* color, void* shader) {
+	int ebx_og;
+	int edi_og;
+	__asm {
+		mov ebx_og, ebx
+		mov edi_og, edi
 	}
+
+	vec4_t dem_color = { GREY_MAYBE,GREY_MAYBE,GREY_MAYBE,1.f };
+
+	float fatiguePercent = sprint_timers::get_sprint_fatigue();
+
+	if (yay_sprint_display_icon && yay_sprint_display_icon->value.integer && yap_is_sprinting()) {
+		shader = (void*)stance_sprint_shader;
+	}
+
+	UI_DrawHandlePic_with_t(x, y, w, h, ebx_og, edi_og, 1.f, 1.f, 1.f, 1.f, &dem_color, shader);
+
+	float filledHeight = h * fatiguePercent;
+	float emptyHeight = h * (1.0f - fatiguePercent);
+
+	UI_DrawHandlePic_with_t(x, y + emptyHeight, w, filledHeight, ebx_og, edi_og,
+		0.f, 1.0f - fatiguePercent, 1.f, 1.f,
+		color, shader, true);
+}
 
 	void CL_DrawStretchPic_sprint_stub_lazy(float x, float y, float width, float height, float s0, float t0, float s1, float t1, int shader, int color)
 	{
@@ -1092,6 +1245,8 @@ uintptr_t stance_sprint_shader = 0;
 	public:
 
 		void post_unpack() override {
+			sprint_timers::init_state_dvar();
+			timers_yap_sprint_int = dvars::Dvar_RegisterVec4("timers_yap_sprint_int",0,0,0,0,INT32_MIN, INT32_MAX,DVAR_SCRIPTINFO | DVAR_NOWRITE,"DO NOT TOUCH THIS!!");
 			dvars::developer = dvars::Dvar_FindVar("developer");
 			yay_sprint_display_icon = dvars::Dvar_RegisterInt("yap_sprint_display_icon", 1, 0, 1, DVAR_ARCHIVE, "Displays the \"stance_sprint\" material on the stance draw when sprinting");
 			yap_sprint_fatigue_min_threshold = dvars::Dvar_RegisterFloat("yap_sprint_fatigue_min_threshold", 0.05f, 0.0f, 1.0f, DVAR_ARCHIVE);
@@ -1119,7 +1274,8 @@ uintptr_t stance_sprint_shader = 0;
 
 			yap_sprint_internal_yet = dvars::Dvar_RegisterInt("yap_sprint_internal_yet", 1, 0, 1, DVAR_ROM);
 
-			yap_sprint_enable = dvars::Dvar_RegisterInt("yap_sprint_enable", 1, 0, 1, DVAR_ARCHIVE, "Enables an engine-native sprint\nrequires binding +sprintbreath or +sprint");
+			yap_sprint_enable = dvars::Dvar_RegisterInt("yap_sprint_enable", 1, 0, 2, DVAR_ARCHIVE, "Enables an engine-native sprint\n"
+				"requires binding +sprintbreath or +sprint\n1 = Enabled & the timers for the the sprint are stored in dvars\n2 = Enabled & the timers for the sprint are stored this play-session");
 
 			yap_sprint_weaponBobAmplitudeSprinting = dvars::Dvar_RegisterVec2("yap_sprint_weaponBobAmplitudeSprinting", 0.02f, 0.014f, 0.0f, 1.f, DVAR_ARCHIVE);
 			yap_sprint_bobAmplitudeSprinting = dvars::Dvar_RegisterVec2("yap_sprint_bobAmplitudeSprinting", 0.02f, 0.014f, 0.0f, 1.f, DVAR_ARCHIVE);
@@ -1175,33 +1331,28 @@ uintptr_t stance_sprint_shader = 0;
 			Memory::VP::InjectHook(0x4A9EE7, GetKeyBindingLocalizedString_meleebreath_stub);
 
 			static auto CG_CheckPlayerStanceChange = safetyhook::create_mid(0x4BE445, [](SafetyHookContext& ctx) {
-
 				if (!yap_sprint_enable || yap_sprint_enable->value.integer == 0) {
 					return;
 				}
 
 				bool isSprinting = yap_is_sprinting();
 
-				// Check if sprint state changed
-				if (isSprinting != g_sprintState.wasSprinting) {
-					// flash the stance baby
+				if (isSprinting != sprint_timers::get_was_sprinting()) {
 					ctx.ecx = 0x00002300;
 
-					// Update lastStanceChangeTime to trigger the white flash
 					int* cgTime = (int*)0xF708DC;
 					int* lastStanceChangeTime = (int*)0xF796C8;
 					*lastStanceChangeTime = *cgTime;
 
-					// Update state
-					g_sprintState.wasSprinting = isSprinting;
+					sprint_timers::set_was_sprinting(isSprinting);
 				}
 
 				int* mask = (int*)(ctx.esp + 0x4);
 
-				if (g_sprintState.SprintFaituge != 1.f)
+				if (sprint_timers::get_sprint_fatigue() != 1.f)
 					*mask = 0x00002300;
-
 				});
+
 
 
 			//static auto CG_CheckPlayerStanceChange1 = safetyhook::create_mid(0x4BE445, [](SafetyHookContext& ctx) {
@@ -1315,6 +1466,7 @@ uintptr_t stance_sprint_shader = 0;
 				};
 
 			static auto menu_parse_item = safetyhook::create_mid(exe(0x4D382A), [](SafetyHookContext& ctx) {
+				static char abuffer[256];
 				menuDef_t* menu = (menuDef_t*)(ctx.ebx);
 				if (menu && menu->window.name && !strcmp(menu->window.name, "options_shoot")) {
 					MENU_DEBUG_PRINT("name %s items %d\n", menu->window.name, menu->itemCount);
@@ -1388,7 +1540,7 @@ uintptr_t stance_sprint_shader = 0;
 						MENU_DEBUG_PRINT("\n--- Creating Sprint button ---\n");
 						itemDef_s* sprintButton = (itemDef_s*)game::UI_Alloc(sizeof(itemDef_s), 4);
 						memcpy(sprintButton, originalButtonTemplate, sizeof(itemDef_s));
-						sprintButton->text = game::String_Alloc("Sprint");
+						sprintButton->text = game::String_Alloc(game::Menu_SafeTranslateString("@MENU_SPRINT","Sprint"));
 						sprintButton->window.rect->y += 15.f;
 						sprintButton->dvarTest = game::String_Alloc("yap_sprint_enable");
 						sprintButton->enableDvar = game::String_Alloc("1 ; 2");
@@ -1403,7 +1555,7 @@ uintptr_t stance_sprint_shader = 0;
 						MENU_DEBUG_PRINT("\n--- Creating Sprint/Hold Breath button ---\n");
 						itemDef_s* sprintBreathButton = (itemDef_s*)game::UI_Alloc(sizeof(itemDef_s), 4);
 						memcpy(sprintBreathButton, originalButtonTemplate, sizeof(itemDef_s));
-						sprintBreathButton->text = game::String_Alloc("Sprint/Hold Breath");
+						sprintBreathButton->text = game::String_Alloc(game::Menu_SafeTranslateString("@MENU_SPRINT_STEADY_SNIPER_RIFLE","Sprint/Hold Breath"));
 						sprintBreathButton->dvarTest = game::String_Alloc("yap_sprint_enable");
 						sprintBreathButton->enableDvar = game::String_Alloc("1 ; 2");
 						sprintBreathButton->dvarFlags = 0x4;
@@ -1524,7 +1676,7 @@ uintptr_t stance_sprint_shader = 0;
 					float maxspeed = *(float*)(ctx.esp + 0x10);
 					float xyspeed = *(float*)(ctx.edi + 0x104);
 
-					float newBob = xyspeed / maxspeed * yap_sprintCameraBob->value.decimal;
+					float newBob = xyspeed / maxspeed * yap_sprintCameraBob->value.decimal; static int lastRealTime = 0;
 
 					x87.writeST(1, newBob);
 
