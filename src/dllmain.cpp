@@ -82,7 +82,11 @@ HMODULE __stdcall LoadLibraryHook(const char* filename) {
     auto hModule = LoadLibraryD.unsafe_stdcall<HMODULE>(filename);
 
     if (strstr(filename, "gfx_d3d") != NULL) {
+
+        bool was_unloaded = gfx_d3d_dll == 0;
+
         gfx_d3d_dll = (uintptr_t)hModule;
+        if(was_unloaded)
         component_loader::post_gfx();
     }
     return hModule;
@@ -113,7 +117,7 @@ BOOL __stdcall FreeLibraryHook(HMODULE hLibModule) {
         char LibraryName[256]{};
         GetModuleFileNameA(hLibModule, LibraryName, sizeof(LibraryName));
 
-        if ((strcmp(LibraryName, "gfx_d3d_x86_s.dll") == 0)) {
+        if (strstr(LibraryName, "gfx_d3dgfx_d3d") != NULL) {
             gfx_d3d_dll = 0;
         }
 
