@@ -47,6 +47,7 @@ namespace render {
 		void post_start() override {
 			SetProcessDPIAware();
 			Memory::VP::InterceptCall(0x4C3A6E, UI_DrawHandlePic_cursor_ptr, UI_DrawHandlePic_cursor);
+			Memory::VP::Nop(exe(0x0040FA04), 2);
 
 		}
 		void post_cg_init() override {
