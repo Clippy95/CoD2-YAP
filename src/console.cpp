@@ -116,6 +116,15 @@ namespace console {
 		void post_start() override {
 			if (!exe(1))
 				return;
+			// from COD2x
+			if (exe(1)) {
+				Memory::VP::Patch<uint8_t>(0x406218 + 2, 60);
+			    Memory::VP::Patch<uint8_t>(0x405C81 + 1, 40);
+				Memory::VP::Patch<uint8_t>(0x40582C + 1, 40);
+
+				Memory::VP::Patch<float>(0x5921E0, 340.f);
+			}
+
 			Memory::VP::InterceptCall(0x405E9B, ConDrawInput_Box_og, ConDrawInput_Box_domain_le_proper);
 			Memory::VP::Patch<uint8_t>(exe(0x405C43 + 2), 3);
 			static auto consoel_flags = safetyhook::create_mid(exe(0x405E43), [](SafetyHookContext& ctx) {
