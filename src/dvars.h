@@ -83,10 +83,21 @@ typedef struct dvar_s
     struct dvar_s* next;
     struct dvar_s* hashNext;
 } dvar_t;
+enum DvarSetSource : __int32
+{
+    DVAR_SOURCE_INTERNAL = 0x0,
+    DVAR_SOURCE_EXTERNAL = 0x1,
+    DVAR_SOURCE_SCRIPT = 0x2,
+    DVAR_SOURCE_DEVGUI = 0x3,
+};
 
 namespace dvars {
+
+
+
     inline std::unordered_map<std::string, std::string> descriptions_runtime;
     WEAK game::symbol<dvar_s* (const char*, int, int, int, uint16_t)> Dvar_RegisterInt_Original{ 0x431FC0,0x4380A0 };
+    WEAK game::symbol<dvar_s* (const char*, bool, uint16_t)> Dvar_RegisterBool_Original{ 0x431F60,0x4380A0 };
     WEAK game::symbol<dvar_s* (const char*, float, float, float, uint16_t)> Dvar_RegisterFloat_Original{ 0x432020,0x00438100 };
     WEAK game::symbol<dvar_s* (const char*, float, float, float, float, uint16_t)> Dvar_RegisterVec2_Original{ 0x4320A0,0x438180 };
     WEAK game::symbol<dvar_s* (const char* name,
@@ -99,13 +110,25 @@ namespace dvars {
         uint16_t flags)> Dvar_RegisterVec4_Original{ 0x4321C0,0x4382A0 };
     WEAK game::symbol<dvar_s* (const char*)> Dvar_FindVar{ 0x431260,0x4373A0 };
 
+    WEAK game::symbol<void (dvar_s* dvar, int value)> Dvar_SetInt{ 0x432B10,0x00438bf0 };
+    WEAK game::symbol<void(dvar_s* dvar, int value)> Dvar_SetBool{ 0x432AB0,0x00438b90 };
+
     inline dvar_s* developer;
 
     inline dvar_s* Dvar_RegisterInt(const char* name, int value, int min, int max, uint16_t flags, const char* description = nullptr) {
         if (description && description[0] != '\0') {
             descriptions_runtime[name] = description;
         }
+
         return Dvar_RegisterInt_Original(name, value, min, max, flags);
+    }
+
+    inline dvar_s* Dvar_RegisterBool(const char* name, bool value, uint16_t flags, const char* description = nullptr) {
+        if (description && description[0] != '\0') {
+            descriptions_runtime[name] = description;
+        }
+
+        return Dvar_RegisterBool_Original(name, value, flags);
     }
 
     inline dvar_s* Dvar_RegisterFloat(const char* name, float value, float min, float max, uint16_t flags, const char* description = nullptr) {
@@ -137,5 +160,7 @@ namespace dvars {
         }
         return Dvar_RegisterVec4_Original(name, x, y, z,w,min,max,flags);
     }
+
+    // doesn't really return the dvar, don't use the return.
 
 }

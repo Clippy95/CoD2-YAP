@@ -14,7 +14,7 @@
 #include "..\hooking.h"
 #include "game.h"
 #include "dvars.h"
-
+dvar_t* r_noborder;
 namespace render {
 	dvar_s* r_buf_dynamicIndexBuffer_mult;
 	dvar_s* r_buf_dynamicVertexBuffer_mult;
@@ -43,7 +43,9 @@ namespace render {
 	class component final : public component_interface
 	{
 	public:
-
+		void post_unpack() override {
+			r_noborder = dvars::Dvar_RegisterInt("r_noborder", 0, 0, 1, DVAR_ARCHIVE,"Remove the border when running in windowed mode (set vid_xpos and vid_ypos to 0)");
+		}
 		void post_start() override {
 			SetProcessDPIAware();
 			Memory::VP::InterceptCall(exe(0x4C3A6E,0x5325B3), UI_DrawHandlePic_cursor_ptr, UI_DrawHandlePic_cursor);
@@ -96,7 +98,6 @@ namespace render {
 			if (exe(1)) { // CoD2X has its own borderless thingy
 				auto windowstyle_addr = gfx(0x10012B16);
 
-				static auto r_noborder = dvars::Dvar_RegisterInt("r_noborder", 0, 0, 1, DVAR_ARCHIVE);
 
 				Memory::VP::Nop(windowstyle_addr, 5);
 				CreateMidHook(windowstyle_addr, [](SafetyHookContext& ctx) {

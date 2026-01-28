@@ -200,6 +200,7 @@ popd</Command>
     <ClInclude Include="src\loader\component_interface.h" />
     <ClInclude Include="src\loader\component_loader.h" />
     <ClInclude Include="src\pch.h" />
+    <ClInclude Include="src\rinput.h" />
     <ClInclude Include="src\shared.h" />
   </ItemGroup>
   <ItemGroup>
@@ -220,6 +221,7 @@ popd</Command>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="src\rinput.cpp" />
     <ClCompile Include="src\saves.cpp" />
     <ClCompile Include="src\SDLLP.cpp" />
     <ClCompile Include="src\shared.cpp" />
