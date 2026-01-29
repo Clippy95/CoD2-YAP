@@ -15,6 +15,7 @@
 #include "dvars.h"
 #include "hooking.h"
 #include "GMath.h"
+#include <menudef.h>
 
 #define SAVE_DEBUG_PRINT(format, ...) \
     do { \
@@ -470,6 +471,40 @@ namespace saves {
             }
         }
 
+        void post_menu_parse(menuDef_t* menu) override {
+            if (menu && menu->window.name && !strcmp(menu->window.name, "save_load_menu")) {
+                itemDef_s* episode_shot = nullptr;
+                itemDef_s* screenshot = nullptr;
+                for (int i = 0; i < menu->itemCount; i++) {
+                    
+                    if (menu->items[i] && menu->items[i]->window.name && !strcmp(menu->items[i]->window.name, "window")) {
+                        rectDef_s episode_shot_rect = { 378.f,130.f,240.f,300.f };
+
+                        if (!episode_shot && episode_shot_rect.floatsEqual(menu->items[i]->window.rect[0])) {
+                            episode_shot = menu->items[i];
+                        }
+                        else if (!screenshot && menu->items[i] && menu->items[i]->window.ownerDraw == UI_SAVEGAME_SHOT) {
+                            screenshot = menu->items[i];
+                        }
+
+                    }
+
+                }
+
+                if (screenshot && episode_shot) {
+
+                    screenshot->window.rect[0].y = 170.f;
+                    screenshot->window.rect[0].h = 108.f;
+
+                    episode_shot->window.rect[0].h = 270.f;
+
+                }
+                else {
+                    printf("NOPPEE :( %p %p",screenshot,episode_shot);
+                }
+
+            }
+        }
 
 	};
 
