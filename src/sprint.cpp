@@ -338,32 +338,8 @@ namespace sprint {
 		g_eWeaponDefsByIndex.fill(nullptr);
 	}
 
-	void BuildEWeaponIndexCache() {
-		ClearEWeaponIndexCache();
-
-		uintptr_t* ptrs = (uintptr_t*)exe(0x01C64548);
-
-		for (int i = 0; i < 128; i++) {
-			if (!ptrs[i]) continue;
-
-			const char* weaponName = *(const char**)ptrs[i];
-			if (!weaponName) continue;
-
-			// Lowercase the name for lookup
-			std::string lowerName = weaponName;
-			std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(),
-				[](unsigned char c) { return std::tolower(c); });
-
-			// Find in map
-			auto it = g_eWeaponDefs.find(lowerName);
-			if (it != g_eWeaponDefs.end()) {
-				g_eWeaponDefsByIndex[i] = &it->second;
-				Com_Printf("Cached eWeapon '%s' at index %d\n", weaponName, i);
-			}
-		}
-	}
-
 	dvar_s* yap_eweapon_semi_match;
+	dvar_s* yap_eweapon_load_mode;
 
 	const eWeaponDef* GetEWeapon(const char* weaponName) {
 		if (!weaponName || g_eWeaponDefs.empty()) return nullptr;
@@ -447,10 +423,51 @@ namespace sprint {
 
 	const eWeaponDef* GetCurrentEWeapon() {
 
-		uint32_t index = GetCurrentWeaponIndex();
-		return GetEWeaponByIndex(index);
+		if(yap_eweapon_load_mode->value.boolean)
+		return GetEWeaponByIndex(GetCurrentWeaponIndex());
 
-		/*return GetEWeapon(GetCurrentWeaponName());*/
+		return GetEWeapon(GetCurrentWeaponName());
+	}
+
+	// Shared function to parse JSON into eWeaponDef
+	bool ParseEWeaponJSON(const std::filesystem::path& filepath, const std::string& weaponName, eWeaponDef& weaponDef) {
+		try {
+			std::ifstream file(filepath);
+			nlohmann::json j = nlohmann::json::parse(file);
+
+			weaponDef.weaponName = weaponName;
+
+			if (j.contains("sprintBobH")) {
+				weaponDef.vSprintBob[0] = j["sprintBobH"].get<float>();
+			}
+			if (j.contains("sprintBobV")) {
+				weaponDef.vSprintBob[1] = j["sprintBobV"].get<float>();
+			}
+			if (j.contains("sprintSpeedScale")) {
+				weaponDef.sprintSpeedScale = j["sprintSpeedScale"].get<float>();
+			}
+			if (j.contains("SprintRot") && j["SprintRot"].is_array() && j["SprintRot"].size() == 3) {
+				weaponDef.vSprintRot[0] = j["SprintRot"][0].get<float>();
+				weaponDef.vSprintRot[1] = j["SprintRot"][1].get<float>();
+				weaponDef.vSprintRot[2] = j["SprintRot"][2].get<float>();
+			}
+			if (j.contains("SprintMove") && j["SprintMove"].is_array() && j["SprintMove"].size() == 3) {
+				weaponDef.vSprintMove[0] = j["SprintMove"][0].get<float>();
+				weaponDef.vSprintMove[1] = j["SprintMove"][1].get<float>();
+				weaponDef.vSprintMove[2] = j["SprintMove"][2].get<float>();
+			}
+			if (j.contains("SprintOfs") && j["SprintOfs"].is_array() && j["SprintOfs"].size() == 3) {
+				weaponDef.vSprintOfs[0] = j["SprintOfs"][0].get<float>();
+				weaponDef.vSprintOfs[1] = j["SprintOfs"][1].get<float>();
+				weaponDef.vSprintOfs[2] = j["SprintOfs"][2].get<float>();
+			}
+
+			return true;
+		}
+		catch (const std::exception& e) {
+			Com_Printf("Failed to parse %s: %s\n", filepath.string().c_str(), e.what());
+			return false;
+		}
 	}
 
 	void LoadEWeaponsFromDirectory(const std::filesystem::path& eWeaponsDir, bool overwrite = true) {
@@ -464,47 +481,16 @@ namespace sprint {
 			if (entry.path().extension() != ".json") continue;
 
 			std::string weaponName = entry.path().stem().string();
-			std::transform(weaponName.begin(), weaponName.end(), weaponName.begin(), ::tolower);
+			std::transform(weaponName.begin(), weaponName.end(), weaponName.begin(),
+				[](unsigned char c) { return std::tolower(c); });
+
 			if (!overwrite && g_eWeaponDefs.find(weaponName) != g_eWeaponDefs.end()) {
 				Com_Printf("Skipping '%s' (already loaded with higher priority)\n", weaponName.c_str());
 				continue;
 			}
 
-			try {
-				std::ifstream file(entry.path());
-				nlohmann::json j = nlohmann::json::parse(file);
-
-				eWeaponDef weaponDef;
-				weaponDef.weaponName = weaponName;
-
-				if (j.contains("sprintBobH")) {
-					weaponDef.vSprintBob[0] = j["sprintBobH"].get<float>();
-				}
-				if (j.contains("sprintBobV")) {
-					weaponDef.vSprintBob[1] = j["sprintBobV"].get<float>();
-				}
-				if (j.contains("sprintSpeedScale")) {
-					weaponDef.sprintSpeedScale = j["sprintSpeedScale"].get<float>();
-				}
-
-				if (j.contains("SprintRot") && j["SprintRot"].is_array() && j["SprintRot"].size() == 3) {
-					weaponDef.vSprintRot[0] = j["SprintRot"][0].get<float>();
-					weaponDef.vSprintRot[1] = j["SprintRot"][1].get<float>();
-					weaponDef.vSprintRot[2] = j["SprintRot"][2].get<float>();
-				}
-
-				if (j.contains("SprintMove") && j["SprintMove"].is_array() && j["SprintMove"].size() == 3) {
-					weaponDef.vSprintMove[0] = j["SprintMove"][0].get<float>();
-					weaponDef.vSprintMove[1] = j["SprintMove"][1].get<float>();
-					weaponDef.vSprintMove[2] = j["SprintMove"][2].get<float>();
-				}
-
-				if (j.contains("SprintOfs") && j["SprintOfs"].is_array() && j["SprintOfs"].size() == 3) {
-					weaponDef.vSprintOfs[0] = j["SprintOfs"][0].get<float>();
-					weaponDef.vSprintOfs[1] = j["SprintOfs"][1].get<float>();
-					weaponDef.vSprintOfs[2] = j["SprintOfs"][2].get<float>();
-				}
-
+			eWeaponDef weaponDef;
+			if (ParseEWeaponJSON(entry.path(), weaponName, weaponDef)) {
 				g_eWeaponDefs[weaponName] = weaponDef;
 				Com_Printf("Loaded eWeapon '%s' - sprintBobH: %.3f, sprintBobV: %.3f, sprintSpeedScale: %.3f\n",
 					weaponName.c_str(),
@@ -512,15 +498,96 @@ namespace sprint {
 					weaponDef.vSprintBob[1],
 					weaponDef.sprintSpeedScale);
 			}
-			catch (const std::exception& e) {
-				Com_Printf("Failed to parse %s: %s\n",
-					entry.path().string().c_str(), e.what());
-			}
 		}
 	}
 
-	void loadEWeapons() {
+	void LoadSingleEWeapon(const std::filesystem::path& filepath, const std::string& weaponName) {
+		eWeaponDef weaponDef;
+		if (ParseEWeaponJSON(filepath, weaponName, weaponDef)) {
+			g_eWeaponDefs[weaponName] = weaponDef;
+			Com_Printf("Loaded eWeapon '%s' from %s\n", weaponName.c_str(), filepath.string().c_str());
+		}
+	}
 
+	void LoadEWeaponsOnDemand() {
+		// Check if game has loaded weapons yet
+		int maxWeapons = *(int*)exe(0x1CBAD9C);
+		if (maxWeapons == 0) {
+			Com_Printf("Game not loaded yet, cannot load eWeapons on-demand\n");
+			return;
+		}
+
+		g_eWeaponDefs.clear();
+		ClearEWeaponIndexCache();
+
+		char modulePath[MAX_PATH];
+		GetModuleFileNameA(NULL, modulePath, MAX_PATH);
+		std::filesystem::path exePath(modulePath);
+		std::filesystem::path baseDir = exePath.parent_path();
+		auto* fs_game = dvars::Dvar_FindVar("fs_game");
+		auto* fs_basegame = dvars::Dvar_FindVar("fs_basegame");
+
+		uintptr_t* ptrs = (uintptr_t*)exe(0x01C64548);
+
+		// Only load eWeapons for weapons currently in the game
+		for (int i = 0; i <= maxWeapons ; i++) {
+			if (!ptrs[i]) continue;
+
+			const char* weaponName = *(const char**)ptrs[i];
+			if (!weaponName) continue;
+
+			std::string lowerName = weaponName;
+			std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(),
+				[](unsigned char c) { return std::tolower(c); });
+
+			// Try to load this specific weapon's JSON
+			std::filesystem::path weaponJsonName = lowerName + ".json";
+
+			// Search in priority order: fs_game > fs_basegame > base
+			bool loaded = false;
+
+			if (fs_game && fs_game->value.string && fs_game->value.string[0] != '\0') {
+				std::filesystem::path fsGamePath = baseDir / fs_game->value.string / "eWeapons" / weaponJsonName;
+				if (std::filesystem::exists(fsGamePath)) {
+					LoadSingleEWeapon(fsGamePath, lowerName);
+					loaded = true;
+				}
+			}
+
+			if (!loaded && fs_basegame && fs_basegame->value.string && fs_basegame->value.string[0] != '\0') {
+				std::filesystem::path fsBasePath = baseDir / fs_basegame->value.string / "eWeapons" / weaponJsonName;
+				if (std::filesystem::exists(fsBasePath)) {
+					LoadSingleEWeapon(fsBasePath, lowerName);
+					loaded = true;
+				}
+			}
+
+			if (!loaded) {
+				std::filesystem::path basePath = baseDir / "eWeapons" / weaponJsonName;
+				if (std::filesystem::exists(basePath)) {
+					LoadSingleEWeapon(basePath, lowerName);
+					loaded = true;
+				}
+			}
+
+			if (loaded) {
+				g_eWeaponDefsByIndex[i] = &g_eWeaponDefs[lowerName];
+			}
+		}
+
+		Com_Printf("Loaded %d eWeapon definitions (on-demand mode)\n", g_eWeaponDefs.size());
+	}
+
+
+	void loadEWeapons() {
+		// Mode 0: Load all from directories (old method)
+		// Mode 1: Load only weapons in current session (new method)
+		if (yap_eweapon_load_mode && yap_eweapon_load_mode->value.boolean) {
+			LoadEWeaponsOnDemand();
+			return;
+		}
+
+		// Old method: load everything from directories
 		g_eWeaponDefs.clear();
 		char modulePath[MAX_PATH];
 		GetModuleFileNameA(NULL, modulePath, MAX_PATH);
@@ -550,9 +617,6 @@ namespace sprint {
 			Com_Printf("Loaded %d eWeapon definitions from base directory\n",
 				g_eWeaponDefs.size());
 		}
-
-		BuildEWeaponIndexCache();
-
 	}
 
 	void ESICall(void* arg1,uintptr_t addr) {
@@ -1357,6 +1421,8 @@ void UI_DrawHandlePic_stub(float x, float y, float w, float h, vec4_t* color, vo
 			yay_sprint_mode = dvars::Dvar_RegisterInt("yap_sprint_mode", 0, 0, 1, DVAR_ARCHIVE,"0 = Allow sprinting omnidirectionally like in United Offensive\n1 = Only allow sprinting when at least moving forward like IW3+");
 
 			yap_eweapon_semi_match = dvars::Dvar_RegisterInt("yap_eweapon_semi_match", 0, 0, 1, DVAR_ARCHIVE);
+
+			yap_eweapon_load_mode = dvars::Dvar_RegisterBool("yap_eweapon_load_mode", 1, DVAR_ARCHIVE | DVAR_LATCH,"0 = Loads all weapons names from directory\n1 = Loads all weapons names from current loaded server");
 
 			yap_player_sprintSpeedScale = dvars::Dvar_RegisterFloat("yap_player_sprintSpeedScale", 1.6f, 0.f, FLT_MAX,DVAR_ARCHIVE,"The scale applied to the player speed when sprinting");
 
