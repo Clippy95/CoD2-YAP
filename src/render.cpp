@@ -64,6 +64,7 @@ namespace render {
 					if (cg_subtitle_centered_enable->value.boolean) {
 						*(float*)(ctx.esp + 0x18) = 1.f; // con_subtitleScale has to be 1.f at this stage rn, we'll scale it later.
 						*(int*)((ctx.esp + 0xC)) = 2;
+						*(int*)((ctx.esp + 0x4)) = 0; // posX should be 0
 						ctx.ecx = 3;
 						is_subtitle_draw = true;
 					}
