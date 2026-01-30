@@ -331,6 +331,38 @@ namespace sprint {
 
 	std::unordered_map<std::string, eWeaponDef> g_eWeaponDefs;
 
+	std::array<eWeaponDef*, 128> g_eWeaponDefsByIndex;
+
+
+	void ClearEWeaponIndexCache() {
+		g_eWeaponDefsByIndex.fill(nullptr);
+	}
+
+	void BuildEWeaponIndexCache() {
+		ClearEWeaponIndexCache();
+
+		uintptr_t* ptrs = (uintptr_t*)exe(0x01C64548);
+
+		for (int i = 0; i < 128; i++) {
+			if (!ptrs[i]) continue;
+
+			const char* weaponName = *(const char**)ptrs[i];
+			if (!weaponName) continue;
+
+			// Lowercase the name for lookup
+			std::string lowerName = weaponName;
+			std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(),
+				[](unsigned char c) { return std::tolower(c); });
+
+			// Find in map
+			auto it = g_eWeaponDefs.find(lowerName);
+			if (it != g_eWeaponDefs.end()) {
+				g_eWeaponDefsByIndex[i] = &it->second;
+				Com_Printf("Cached eWeapon '%s' at index %d\n", weaponName, i);
+			}
+		}
+	}
+
 	dvar_s* yap_eweapon_semi_match;
 
 	const eWeaponDef* GetEWeapon(const char* weaponName) {
@@ -392,8 +424,33 @@ namespace sprint {
 		return NULL;
 	}
 
+	uint32_t GetCurrentWeaponIndex() {
+		uint32_t index = 0;
+		uint32_t* unk1 = (uint32_t*)0xF708F4;
+
+		if ((*unk1 & 0x20000) != 0) {
+			index = cdecl_call<uint32_t>(0x4DC660);
+		}
+		else {
+			index = *(uint32_t*)0xF70994;
+			if ((*unk1 & 0x10) == 0) {
+				index = *(uint32_t*)0xF70998;
+			}
+		}
+		return index;
+	}
+
+	const eWeaponDef* GetEWeaponByIndex(uint32_t index) {
+		if (index >= 128) return nullptr;
+		return g_eWeaponDefsByIndex[index];
+	}
+
 	const eWeaponDef* GetCurrentEWeapon() {
-		return GetEWeapon(GetCurrentWeaponName());
+
+		uint32_t index = GetCurrentWeaponIndex();
+		return GetEWeaponByIndex(index);
+
+		/*return GetEWeapon(GetCurrentWeaponName());*/
 	}
 
 	void LoadEWeaponsFromDirectory(const std::filesystem::path& eWeaponsDir, bool overwrite = true) {
@@ -407,6 +464,7 @@ namespace sprint {
 			if (entry.path().extension() != ".json") continue;
 
 			std::string weaponName = entry.path().stem().string();
+			std::transform(weaponName.begin(), weaponName.end(), weaponName.begin(), ::tolower);
 			if (!overwrite && g_eWeaponDefs.find(weaponName) != g_eWeaponDefs.end()) {
 				Com_Printf("Skipping '%s' (already loaded with higher priority)\n", weaponName.c_str());
 				continue;
@@ -492,6 +550,9 @@ namespace sprint {
 			Com_Printf("Loaded %d eWeapon definitions from base directory\n",
 				g_eWeaponDefs.size());
 		}
+
+		BuildEWeaponIndexCache();
+
 	}
 
 	void ESICall(void* arg1,uintptr_t addr) {
@@ -1116,6 +1177,13 @@ void UI_DrawHandlePic_stub(float x, float y, float w, float h, vec4_t* color, vo
 
 		if (pm && pm->ps && pm->ps->pm_flags & PMF_SPRINTING) {
 			maxspeed *= yap_player_sprintSpeedScale->value.decimal;
+
+			auto eWeapon = GetCurrentEWeapon();
+
+			if (eWeapon) {
+				maxspeed *= eWeapon->sprintSpeedScale;
+			}
+
 		}
 
 	}
@@ -1309,7 +1377,7 @@ void UI_DrawHandlePic_stub(float x, float y, float w, float h, vec4_t* color, vo
 		}
 
 		void post_cg_init() override {
-			if (!exe(1))
+			if ( !exe(1))
 				return;
 			loadEWeapons();
 		}
@@ -1526,6 +1594,13 @@ void UI_DrawHandlePic_stub(float x, float y, float w, float h, vec4_t* color, vo
 
 				if (yap_is_sprinting()) {
 					speed *= yap_player_sprintSpeedScale->value.decimal;
+
+					auto eWeapon =  GetCurrentEWeapon();
+
+					if (eWeapon) {
+						speed *= eWeapon->sprintSpeedScale;
+					}
+
 				}
 				if (dvars::developer && dvars::developer->value.integer)
 				printf("da speed %f\n", speed);
