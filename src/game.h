@@ -501,6 +501,8 @@ WEAK game::symbol<int (const char *Format, ...)> Com_Printf{ 0x42C130,0x431EE0 }
 
 WEAK game::symbol<void(int code,const char* Format, ...)> Com_Error{ 0x42C7F0 };
 
+WEAK game::symbol<const char*(const char* Format, ...)> va{ 0x43F990 };
+
 enum errorParm_e
 {
 	// Show message box, close window, show console window

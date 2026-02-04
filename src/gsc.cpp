@@ -16,6 +16,9 @@
 #include "dvars.h"
 namespace gsc {
 
+	std::unordered_map<std::string, int> ScriptMainHandles;
+	std::unordered_map<std::string, int> ScriptInitHandles;
+
 	std::unordered_map<std::string, game::scr_function_t> CustomScrFunctions;
 	std::unordered_map<const char*, const char*> ReplacedFunctions;
 	const char* ReplacedPos = nullptr;
@@ -66,13 +69,13 @@ namespace gsc {
 	{
 		if (!*what || !*with)
 		{
-			Com_Printf(0, "Invalid parameters passed to ReplacedFunctions\n");
+			Com_Printf("Invalid parameters passed to ReplacedFunctions\n");
 			return;
 		}
 
 		if (ReplacedFunctions.contains(what))
 		{
-			Com_Printf(0, "ReplacedFunctions already contains codePosValue for a function\n");
+			Com_Printf("ReplacedFunctions already contains codePosValue for a function\n");
 		}
 
 		ReplacedFunctions[what] = with;
@@ -97,6 +100,152 @@ namespace gsc {
 			//	ReplacedPos = 0;
 		}
 	}
+	uintptr_t Scr_GetFunctionHandle_addr = 0x45DC30;
+
+	WEAK game::symbol<int(const char* filename)>  Scr_LoadScript{ 0x45E060 };
+
+	WEAK game::symbol<void(char** files,int numfiles)>  FS_SortFileList{ 0x41E8C0 };
+
+	//WEAK game::symbol<int (int handle)>  Scr_ExecThread{ 0x46DA30 };
+	WEAK game::symbol<int(uint16_t handle)>  Scr_FreeThread{ 0x464EA0 };
+
+	uintptr_t Scr_ExecThread_addr = 0x46DA30;
+	int Scr_ExecThread(int thread, int unknown = 0) {
+		int result;
+		__asm {
+			pushad
+			mov eax, thread
+			push unknown
+			call Scr_ExecThread_addr
+			mov result, eax
+			add esp, 4
+			popad
+		}
+		return result;
+	}
+
+	//WEAK game::symbol<const char** (__fastcall*)(const char* paths, const char* extension, const char* filter0,const char* filter1,int* max_num_files)>  FS_ListFilteredFiles{ 0x41DFC0 };
+
+	char** FS_ListFilteredFiles(const char* paths, const char* extension, const char* filter0, const char* filter1, int* max_num_files) {
+
+
+		return fastcall_call<char**>(0x41DFC0, paths, extension, filter0, filter1, max_num_files);
+	}
+
+	int Scr_GetFunctionHandle(const char* filename, const char* function_name) {
+		int result;
+		__asm {
+			pushad
+			mov eax, filename
+			push function_name
+			call Scr_GetFunctionHandle_addr
+			mov result, eax
+			add esp,4
+			popad
+		}
+		return result;
+	}
+
+	void LoadScript(const std::string& path)
+	{
+		if (!Scr_LoadScript(path.data()))
+		{
+			//Com_Printf(va("The script %s encountered an error during the loading process.\n", path.data()));
+			return;
+		}
+
+		Com_Printf(("The script %s has been loaded successfully.\n", path.data()));
+
+		const auto initHandle = Scr_GetFunctionHandle(path.data(), "init");
+		if (initHandle != 0)
+		{
+			ScriptInitHandles.insert_or_assign(path, initHandle);
+		}
+
+		const auto mainHandle = Scr_GetFunctionHandle(path.data(), "main");
+		if (mainHandle != 0)
+		{
+			ScriptMainHandles.insert_or_assign(path, mainHandle);
+		}
+	}
+
+	void FS_FreeFileList(char** list) {
+		int i;
+
+
+
+		if (!list) {
+			return;
+		}
+
+		for (i = 0; list[i]; i++) {
+			game::Z_Free(list[i]);
+		}
+
+		game::Z_Free(list);
+	}
+
+	void LoadScriptsFromIWD() {
+		ScriptMainHandles.clear();
+		ScriptInitHandles.clear();
+
+		auto mapname = dvars::Dvar_FindVar("mapname")->value.string;
+
+		// Load from maps/custom
+		int max_files = 0;
+		auto files = FS_ListFilteredFiles(*(const char**)0x1CBAD00, "maps/custom", "gsc", "", &max_files);
+		FS_SortFileList(files, max_files);
+
+		for (int i = 0; i < max_files; i++) {
+			std::string filepath(files[i]);
+
+			// Check if file ends with .gsc
+			if (filepath.length() < 4 || filepath.substr(filepath.length() - 4) != ".gsc") {
+				continue;
+			}
+
+			std::string prefix = "maps/custom/";
+			if (filepath.find(prefix) == 0) {
+				std::string remainder = filepath.substr(prefix.length());
+
+				// Find the first slash to check if it's in a subdirectory
+				size_t slashPos = remainder.find('/');
+
+				bool shouldLoad = false;
+
+				if (slashPos == std::string::npos) {
+					// No slash = file directly in maps/custom/, always load
+					shouldLoad = true;
+				}
+				else {
+					// File is in a subdirectory, check if directory matches mapname
+					std::string dirname = remainder.substr(0, slashPos);
+					if (dirname == mapname) {
+						shouldLoad = true;
+					}
+				}
+
+				if (shouldLoad) {
+					// Remove .gsc extension
+					std::string scriptPath = filepath.substr(0, filepath.length() - 4);
+					printf("Loading script: %s\n", scriptPath.c_str());
+					LoadScript(scriptPath);
+				}
+			}
+		}
+		FS_FreeFileList(files);
+	}
+	uintptr_t Path_AutoDisconnectPaths_addr;
+	int Path_AutoDisconnectPaths_Scr_LoadLevel() {
+
+		for (const auto& handle : ScriptMainHandles)
+		{
+			const auto thread = Scr_ExecThread(handle.second);
+			Scr_FreeThread(static_cast<std::uint16_t>(thread));
+		}
+		auto result = cdecl_call<int>(Path_AutoDisconnectPaths_addr);
+		return result;
+	}
 
 	class component final : public component_interface
 	{
@@ -110,6 +259,23 @@ namespace gsc {
 			if (!exe(1))
 				return;
 
+			//Memory::VP::InterceptCall(exe(0x4DA4FF), Path_AutoDisconnectPaths_addr, Path_AutoDisconnectPaths_Scr_LoadLevel);
+
+			static auto G_LoadLevel_runframe = safetyhook::create_mid(exe(0x4DA524), [](SafetyHookContext& ctx) {
+
+				for (const auto& handle : ScriptInitHandles)
+				{
+					const auto thread = Scr_ExecThread(handle.second);
+					Scr_FreeThread(static_cast<std::uint16_t>(thread));
+				}
+
+				});
+
+			static auto GScr_LoadScriptsForEntities = safetyhook::create_mid(0x524570, [](SafetyHookContext& ctx) {
+
+				LoadScriptsFromIWD();
+
+				});
 			Scr_GetFunctionD = safetyhook::create_inline(exe(0x4F8B60), Scr_GetFunction_Stub);
 			static auto SV_ShutdownGameVM = safetyhook::create_mid(exe(0x4489A0), [](SafetyHookContext& ctx) {
 
