@@ -131,7 +131,7 @@ namespace sound {
 						for (int i = 0; i < 11; i++) {
 							int channelIndex = channelMap[i];
 							channelvolume[channelIndex] *= snd_test_volume[i]->value.decimal;
-							printf("channelvolume[%d]: %f\n", channelIndex, channelvolume[channelIndex]);
+							//printf("channelvolume[%d]: %f\n", channelIndex, channelvolume[channelIndex]);
 						}
 					});
 
