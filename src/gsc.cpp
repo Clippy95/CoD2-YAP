@@ -20,7 +20,12 @@ namespace gsc {
 	std::unordered_map<std::string, int> ScriptInitHandles;
 
 	std::unordered_map<std::string, game::scr_function_t> CustomScrFunctions;
-	std::unordered_map<const char*, const char*> ReplacedFunctions;
+	struct ReplacementInfo {
+		const char* replacementPos;
+		bool disableOnce;
+		bool enabled;
+	};
+	std::unordered_map<const char*, ReplacementInfo> ReplacedFunctions;
 	const char* ReplacedPos = nullptr;
 
 
@@ -65,7 +70,7 @@ namespace gsc {
 		return value->u.codePosValue;
 	}
 
-	void SetReplacedPos(const char* what, const char* with)
+	void SetReplacedPos(const char* what, const char* with, bool enabled = true)
 	{
 		if (!*what || !*with)
 		{
@@ -75,29 +80,42 @@ namespace gsc {
 
 		if (ReplacedFunctions.contains(what))
 		{
-			Com_Printf("ReplacedFunctions already contains codePosValue for a function\n");
+			// Update existing entry
+			ReplacedFunctions[what].replacementPos = with;
+			ReplacedFunctions[what].enabled = enabled;
 		}
-
-		ReplacedFunctions[what] = with;
+		else
+		{
+			ReplacedFunctions[what] = { with, false, enabled };
+		}
 	}
 
 	void GetReplacedPos(const char* pos)
 	{
 		if (!pos)
 		{
-			// This seems to happen often and there should not be pointers to NULL in our map
 			return;
 		}
 
-
-
 		if (const auto itr = ReplacedFunctions.find(pos); itr != ReplacedFunctions.end())
 		{
-			ReplacedPos = itr->second;
+			if (!itr->second.enabled)
+			{
+				// Detour is disabled
+				ReplacedPos = nullptr;
+				return;
+			}
 
-			//auto lastCall = (gScrVmPub->function_frame[-(int)gScrVmPub->function_count].fs.pos) - 8;
-			//if (ReplacedPos == lastCall)
-			//	ReplacedPos = 0;
+			if (itr->second.disableOnce)
+			{
+				// Skip the detour this time
+				itr->second.disableOnce = false;
+				ReplacedPos = nullptr;
+			}
+			else
+			{
+				ReplacedPos = itr->second.replacementPos;
+			}
 		}
 	}
 	uintptr_t Scr_GetFunctionHandle_addr = 0x45DC30;
@@ -142,6 +160,19 @@ namespace gsc {
 			mov result, eax
 			add esp,4
 			popad
+		}
+		return result;
+	}
+
+	uintptr_t Scr_GetInt_addr = 0x46E4A0;
+	int Scr_GetInt(int param) {
+		int result;
+		__asm {
+			push eax
+			mov eax, param
+			call Scr_GetInt_addr
+			mov result, eax
+			pop eax
 		}
 		return result;
 	}
@@ -193,7 +224,7 @@ namespace gsc {
 
 		// Load from maps/custom
 		int max_files = 0;
-		auto files = FS_ListFilteredFiles(*(const char**)0x1CBAD00, "maps/custom", "gsc", "", &max_files);
+		auto files = FS_ListFilteredFiles(*(const char**)0x1CBAD00, "maps/custom", "gsc", NULL, &max_files);
 		FS_SortFileList(files, max_files);
 
 		for (int i = 0; i < max_files; i++) {
@@ -246,7 +277,9 @@ namespace gsc {
 		auto result = cdecl_call<int>(Path_AutoDisconnectPaths_addr);
 		return result;
 	}
-
+	int Scr_GetNumParams() {
+		return gScrVmPub[0].outparamcount;
+	}
 	class component final : public component_interface
 	{
 	public:
@@ -287,14 +320,80 @@ namespace gsc {
 
 				});
 
-			gsc::AddFunction("replacefunc", [] // gsc: ReplaceFunc(<function>, <function>)
+			gsc::AddFunction("detour_make", [] // gsc: detour_make(<original>, <detour>, [enabled])
 				{
-
-
 					const auto what = GetCodePosForParam(0);
 					const auto with = GetCodePosForParam(1);
 
-					SetReplacedPos(what, with);
+					bool enabled = true; // Default to enabled
+
+					if (Scr_GetNumParams() >= 3)
+					{
+						enabled = Scr_GetInt(2) != 0;
+					}
+
+					SetReplacedPos(what, with, enabled);
+				});
+
+
+			gsc::AddFunction("detour_enable", [] // gsc: detour_enable(<original>)
+				{
+					const auto what = GetCodePosForParam(0);
+
+					if (!*what)
+					{
+						Com_Printf("Invalid parameter passed to detour_enable\n");
+						return;
+					}
+
+					if (const auto itr = ReplacedFunctions.find(what); itr != ReplacedFunctions.end())
+					{
+						itr->second.enabled = true;
+					}
+					else
+					{
+						Com_Printf("Function not found in ReplacedFunctions\n");
+					}
+				});
+
+			gsc::AddFunction("detour_disable", [] // gsc: detour_disable(<original>)
+				{
+					const auto what = GetCodePosForParam(0);
+
+					if (!*what)
+					{
+						Com_Printf("Invalid parameter passed to detour_disable\n");
+						return;
+					}
+
+					if (const auto itr = ReplacedFunctions.find(what); itr != ReplacedFunctions.end())
+					{
+						itr->second.enabled = false;
+					}
+					else
+					{
+						Com_Printf("Function not found in ReplacedFunctions\n");
+					}
+				});
+
+			gsc::AddFunction("detour_disableonce", [] // gsc: DisableDetourOnce(<function>)
+				{
+					const auto what = GetCodePosForParam(0);
+
+					if (!*what)
+					{
+						Com_Printf("Invalid parameter passed to DisableDetourOnce\n");
+						return;
+					}
+
+					if (const auto itr = ReplacedFunctions.find(what); itr != ReplacedFunctions.end())
+					{
+						itr->second.disableOnce = true;
+					}
+					else
+					{
+						Com_Printf("Function not found in ReplacedFunctions\n");
+					}
 				});
 
 			static auto VM_ExecuteInternal_midhook = safetyhook::create_mid(exe(0x469451), [](SafetyHookContext& ctx) {
@@ -305,8 +404,6 @@ namespace gsc {
 
 				GetReplacedPos(pos);
 				if (ReplacedPos) {
-
-					printf("pos ptr1 %p ptr2 %p replaced %p og: %p %d\n", gScrVmPub->function_frame[0].fs.pos, gScrVmPub->function_frame[-(int)gScrVmPub->function_count].fs.pos, ReplacedPos, ctx.esi,gScrVmPub->function_count);
 					//printf("found a ReplcaedPos!!!\n");
 					ctx.esi = (uintptr_t)ReplacedPos;
 					ReplacedPos = nullptr;
