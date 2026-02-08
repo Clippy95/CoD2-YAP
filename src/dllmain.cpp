@@ -3,6 +3,10 @@
 
 #include "loader/component_loader.h"
 
+#include <dwmapi.h>
+#pragma comment(lib, "dwmapi.lib")
+#include <shellapi.h>
+#pragma comment(lib, "shell32.lib")
 
 #include "MemoryMgr.h"
 
@@ -53,6 +57,7 @@ void OpenConsoleAndRedirectIO() {
     // 1. Allocate a console if one isn't already attached
     if (GetConsoleWindow() == NULL) {
         AllocConsole();
+        SetConsoleTitleA(MOD_NAME " console");
     }
 
     // 2. Redirect standard I/O streams to the console
@@ -230,6 +235,138 @@ void Init() {
     FreeLibraryD = safetyhook::create_inline(FreeLibrary, FreeLibraryHook);
     LoadLibraryD = safetyhook::create_inline(LoadLibraryA, LoadLibraryHook);
 
+    HHOOK windowsHook = SetWindowsHookExA(WH_CALLWNDPROC, [](int code, WPARAM w, LPARAM l) -> LRESULT {
+        if (code < 0) return CallNextHookEx(NULL, code, w, l);
+
+        CWPSTRUCT* p = reinterpret_cast<CWPSTRUCT*>(l);
+        static HWND hConsole = NULL;
+        static bool isWine = false;
+        static char windowTitle[256];
+        static constexpr char COD2SPWINDOW[] = "Call of Duty 2";
+        static constexpr char COD2MPWINDOW[] = "Multiplayer";
+        static constexpr char EXCEPTIONTRACERWINDOW[] = "Application Crash";
+        static constexpr char EXTERNALCONSOLEWINDOW[] = "Console";
+
+        if (!hConsole) {
+            hConsole = GetConsoleWindow();
+            typedef const char* (CDECL* wine_get_version_t)(void);
+            HMODULE hNtdll = GetModuleHandleA("ntdll.dll");
+            wine_get_version_t pwine_get_version = NULL;
+            if (hNtdll) {
+                pwine_get_version = (wine_get_version_t)GetProcAddress(hNtdll, "wine_get_version");
+            }
+            isWine = (pwine_get_version != NULL);
+        }
+
+        // Filter messages
+        static std::unordered_map<HWND, uint8_t> windowsHookCache;
+        // Bits: 0 = CoD2(SP/MP), 1 = ExceptionTracer, 2 = ExternalConsole, 3 = AlreadyProcessed
+        if (p->message != WM_CREATE && p->message != WM_SIZE) {
+            return CallNextHookEx(NULL, code, w, l);
+        }
+
+        // Check the cache
+        auto it = windowsHookCache.find(p->hwnd);
+        if (it != windowsHookCache.end()) {
+            uint8_t flags = it->second;
+            if (flags & (1 << 1)) return CallNextHookEx(NULL, code, w, l);  // ExceptionTracer
+            if (p->message == WM_SIZE && (flags & 8)) return CallNextHookEx(NULL, code, w, l);  // AlreadyProcessed
+        }
+
+        // Check for the game's own windows
+        GetWindowTextA(p->hwnd, windowTitle, sizeof(windowTitle));
+        bool isCoD2SP = (strcmp(windowTitle, COD2SPWINDOW) == 0);
+        bool isCoD2MP = (strstr(windowTitle, COD2MPWINDOW) != nullptr);
+        bool isExceptionTracer = (strcmp(windowTitle, EXCEPTIONTRACERWINDOW) == 0);
+        bool isExternalConsole = (strstr(windowTitle, EXTERNALCONSOLEWINDOW) != nullptr);
+
+        // Cache the window type
+        uint8_t flags = 0;
+        if (isCoD2SP || isCoD2MP) flags |= 1;          // Bit 0: CoD2(SP/MP)
+        else if (isExceptionTracer) flags |= (1 << 1); // Bit 1: ExceptionTracer
+        else if (isExternalConsole) flags |= (1 << 2); // Bit 2: ExternalConsole
+        windowsHookCache[p->hwnd] = flags;
+
+        if (isExceptionTracer) return CallNextHookEx(NULL, code, w, l);
+
+        if (p->message == WM_CREATE) {
+            // Set the game icon for all windows
+            if (hConsole == NULL || isWine) {
+                char modulePath[MAX_PATH];
+                if (GetModuleFileNameA(NULL, modulePath, sizeof(modulePath))) {
+                    HICON hIcon = ExtractIconA(NULL, modulePath, 0);
+                    if (hIcon && hIcon != (HICON)INVALID_HANDLE_VALUE) {
+                        HICON hDup = CopyIcon(hIcon);
+                        SetClassLongPtrW(p->hwnd, GCLP_HICON, reinterpret_cast<LONG_PTR>(hDup));
+                        DestroyIcon(hIcon);
+                    }
+                }
+            }
+            else if (hConsole != p->hwnd) {
+                HICON hIconBig = reinterpret_cast<HICON>(GetClassLongPtrA(hConsole, GCLP_HICON));
+                HICON hIconSmall = reinterpret_cast<HICON>(GetClassLongPtrA(hConsole, GCLP_HICONSM));
+                if (hIconBig) SetClassLongPtrA(p->hwnd, GCLP_HICON, reinterpret_cast<LONG_PTR>(hIconBig));
+                if (hIconSmall) SetClassLongPtrA(p->hwnd, GCLP_HICONSM, reinterpret_cast<LONG_PTR>(hIconSmall));
+            }
+
+            // Exclude the splash screen
+            if (!(GetWindowLongA(p->hwnd, GWL_STYLE) & WS_DLGFRAME)) {
+                return CallNextHookEx(NULL, code, w, l);
+            }
+
+            if (isCoD2SP || isCoD2MP) {
+                // Add minimize button for game windows
+                LONG style = GetWindowLongA(p->hwnd, GWL_STYLE);
+                SetWindowLongA(p->hwnd, GWL_STYLE, style | WS_MINIMIZEBOX);
+
+                // Automatically apply dark titlebar to game windows
+                if (!isWine && p->message == WM_CREATE) {
+                    BOOL darkMode = TRUE;
+                    // DWMWA_USE_IMMERSIVE_DARK_MODE
+                    if (hConsole && hConsole != p->hwnd) DwmGetWindowAttribute(hConsole, 20, &darkMode, sizeof(darkMode));
+                    if (FAILED(DwmSetWindowAttribute(p->hwnd, 20, &darkMode, sizeof(darkMode)))) {
+                        // XP/Vista/7/DWM-off
+                    }
+                }
+            }
+
+            // Unhide external console
+            else if (isExternalConsole) {
+                ShowWindow(p->hwnd, SW_SHOW);
+                SetWindowPos(p->hwnd, HWND_BOTTOM, 0, 0, 0, 0,
+                    SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+                PostMessage(p->hwnd, WM_SYSCOMMAND, SC_MINIMIZE, 0);
+            }
+        }
+
+        // Move windows to the foreground
+        else if (p->message == WM_SIZE && !isExternalConsole) {
+            LONG style = GetWindowLongA(p->hwnd, GWL_STYLE);
+            if ((style & WS_SYSMENU) == 0) return CallNextHookEx(NULL, code, w, l);
+
+            windowsHookCache[p->hwnd] |= 8;  // Bit 3: AlreadyProcessed
+
+            // Detect only for new windows
+            auto it2 = windowsHookCache.find(p->hwnd);
+            if (it2 != windowsHookCache.end() && (it2->second & 8)) {
+                return CallNextHookEx(NULL, code, w, l);
+            }
+
+            WINDOWPLACEMENT wp = { sizeof(wp) };
+            if (GetWindowPlacement(p->hwnd, &wp)) {
+                AllowSetForegroundWindow(ASFW_ANY);
+                if (wp.showCmd != SW_NORMAL) {
+                    ShowWindow(p->hwnd, SW_RESTORE);
+                }
+                SetWindowPos(p->hwnd, HWND_TOPMOST, 0, 0, 0, 0,
+                    SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW | SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS);
+                SetWindowPos(p->hwnd, HWND_NOTOPMOST, 0, 0, 0, 0,
+                    SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS);
+                SetForegroundWindow(p->hwnd);
+            }
+        }
+        return CallNextHookEx(NULL, code, w, l); }, NULL, GetCurrentThreadId());
+
     component_loader::post_start();
     Memory::VP::InterceptCall(exe(0x4A3999,0x4C0E20), CG_init_ptr, CG_Init_stub);
 
@@ -240,7 +377,7 @@ void Init() {
         Memory::VP::Patch<uint32_t>(hunk, 512);
     }
 
-    static const char* version = "CoD2-YAP r" BUILD_NUMBER_STR;
+    static const char* version = MOD_NAME " r" BUILD_NUMBER_STR;
     if(exe(1))
     Memory::VP::Patch<const char*>(exe((0x004060E6 + 1)), version);
 
