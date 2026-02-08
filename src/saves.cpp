@@ -390,6 +390,13 @@ namespace saves {
         return cdecl_call<uint32_t>(*(uintptr_t*)0x617AC4, path, imageTrack, unk1);
     }
 
+    uintptr_t Dvar_SetVariant_addr;
+    void _cdecl Dvar_SetVariant_dvar_cheats(dvar_s* dvar, int value) {
+        if (value == 0)
+            return;
+        
+        cdecl_call<void>(Dvar_SetVariant_addr, dvar, value);
+    }
 	class component final : public component_interface
 	{
 	public:
@@ -441,6 +448,10 @@ namespace saves {
                 });
                 
 
+            // no need for thereisacow anymore
+            Memory::VP::Nop(exe(0x446BC6), 5);
+
+            Memory::VP::InterceptCall(exe(0x446BD6), Dvar_SetVariant_addr, Dvar_SetVariant_dvar_cheats);
 		}
         void after_item_parse(itemDef_s* this_item) override {
             if (!exe(1))
