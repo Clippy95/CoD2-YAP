@@ -148,11 +148,11 @@ namespace sound {
 					bool onlyBrokenMusic = snd_alias_hook->value.integer >= 2 ? !strcmp((const char*)ctx.ebx, "music") : true;
 
 					if (onlyBrokenMusic && (aliasName.contains("weap") || aliasName.contains("weapon") || soundFile.contains("weapon")) /* <-- this one is overkill?*/) {
-						printf("name %s\nalias %s\nsource %s\n", (const char*)ctx.ebx, alias->szAliasName, alias->szSoundFile);
+						//printf("name %s\nalias %s\nsource %s\n", (const char*)ctx.ebx, alias->szAliasName, alias->szSoundFile);
 						ctx.ebx = (uintptr_t)"item";
 					}
-					if(snd_alias_hook->value.integer == snd_alias_hook->limits.integer.max)
-					printf("name %s\nalias %s\nsource %s\n", (const char*)ctx.ebx,alias->szAliasName, alias->szSoundFile);
+					//if(snd_alias_hook->value.integer == snd_alias_hook->limits.integer.max)
+					//printf("name %s\nalias %s\nsource %s\n", (const char*)ctx.ebx,alias->szAliasName, alias->szSoundFile);
 
 					});
 
