@@ -100,6 +100,7 @@ namespace dvars {
     WEAK game::symbol<dvar_s* (const char*, bool, uint16_t)> Dvar_RegisterBool_Original{ 0x431F60,0x4380A0 };
     WEAK game::symbol<dvar_s* (const char*, float, float, float, uint16_t)> Dvar_RegisterFloat_Original{ 0x432020,0x00438100 };
     WEAK game::symbol<dvar_s* (const char*, float, float, float, float, uint16_t)> Dvar_RegisterVec2_Original{ 0x4320A0,0x438180 };
+    WEAK game::symbol<dvar_s* (const char*, const char*, uint16_t)> Dvar_RegisterString_original{ 0x432260,0x438340 };
     WEAK game::symbol<dvar_s* (const char* name,
         float x,
         float y,
@@ -159,6 +160,13 @@ namespace dvars {
             descriptions_runtime[name] = description;
         }
         return Dvar_RegisterVec4_Original(name, x, y, z,w,min,max,flags);
+    }
+
+    inline dvar_s* Dvar_RegisterString(const char* name, const char* value, uint16_t flags, const char* description = nullptr) {
+        if (description && description[0] != '\0') {
+            descriptions_runtime[name] = description;
+        }
+        return Dvar_RegisterString_original(name, value, flags);
     }
 
     // doesn't really return the dvar, don't use the return.

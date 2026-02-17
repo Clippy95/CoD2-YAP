@@ -240,6 +240,30 @@ namespace game {
 		return fallback;
 		
 	}
+	WEAK game::symbol<void(char** files, int numfiles)>  FS_SortFileList_og{ 0x41E8C0 };
+
+	inline void FS_SortFileList(char** files, int numfiles) {
+		FS_SortFileList_og(files, numfiles);
+	}
+
+	inline char** FS_ListFilteredFiles(const char* paths, const char* extension, const char* filter0, const char* filter1, int* max_num_files) {
+		auto result = fastcall_call<char**>(0x41DFC0, paths, extension, filter0, filter1, max_num_files);
+		return result;
+	}
+
+	inline 	void FS_FreeFileList(char** list) {
+		int i;
+
+		if (!list) {
+			return;
+		}
+
+		for (i = 0; list[i]; i++) {
+			game::Z_Free(list[i]);
+		}
+
+		game::Z_Free(list);
+	}
 
     enum {
         K_TAB = 9,

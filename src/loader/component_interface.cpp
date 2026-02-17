@@ -26,6 +26,30 @@ bool component_loader::post_start()
 	return true;
 }
 
+bool component_loader::post_game_init()
+{
+	static auto handled = false;
+	if (handled) return true;
+	handled = true;
+
+	try
+	{
+		for (const auto& component_ : get_components())
+		{
+			//printf("[loader] calling post_game_init on %p (%s)\n",
+			//	(void*)component_.get(),
+			//	typeid(*component_.get()).name());
+			component_->post_game_init();
+			//printf("[loader] done\n");
+		}
+	}
+	catch (premature_shutdown_trigger&)
+	{
+		return false;
+	}
+	return true;
+}
+
 bool component_loader::post_load()
 {
 	static auto handled = false;

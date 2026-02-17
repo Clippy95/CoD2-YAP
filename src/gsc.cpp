@@ -155,7 +155,6 @@ namespace gsc {
 
 	WEAK game::symbol<int(const char* filename)>  Scr_LoadScript{ 0x45E060 };
 
-	WEAK game::symbol<void(char** files,int numfiles)>  FS_SortFileList{ 0x41E8C0 };
 
 	//WEAK game::symbol<int (int handle)>  Scr_ExecThread{ 0x46DA30 };
 	WEAK game::symbol<int(uint16_t handle)>  Scr_FreeThread{ 0x464EA0 };
@@ -177,11 +176,7 @@ namespace gsc {
 
 	//WEAK game::symbol<const char** (__fastcall*)(const char* paths, const char* extension, const char* filter0,const char* filter1,int* max_num_files)>  FS_ListFilteredFiles{ 0x41DFC0 };
 
-	char** FS_ListFilteredFiles(const char* paths, const char* extension, const char* filter0, const char* filter1, int* max_num_files) {
 
-
-		return fastcall_call<char**>(0x41DFC0, paths, extension, filter0, filter1, max_num_files);
-	}
 
 	int Scr_GetFunctionHandle(const char* filename, const char* function_name) {
 		int result;
@@ -233,21 +228,7 @@ namespace gsc {
 		}
 	}
 
-	void FS_FreeFileList(char** list) {
-		int i;
 
-
-
-		if (!list) {
-			return;
-		}
-
-		for (i = 0; list[i]; i++) {
-			game::Z_Free(list[i]);
-		}
-
-		game::Z_Free(list);
-	}
 
 	void LoadScriptsFromIWD() {
 		ScriptMainHandles.clear();
@@ -259,8 +240,8 @@ namespace gsc {
 
 		// Load from maps/custom (IWD/pak files and raw directories)
 		int max_files = 0;
-		auto files = FS_ListFilteredFiles(*(const char**)0x1CBAD00, "maps/custom", "gsc", NULL, &max_files);
-		FS_SortFileList(files, max_files);
+		auto files = game::FS_ListFilteredFiles(*(const char**)0x1CBAD00, "maps/custom", "gsc", NULL, &max_files);
+		game::FS_SortFileList(files, max_files);
 
 		for (int i = 0; i < max_files; i++) {
 			std::string filepath(files[i]);
@@ -299,7 +280,7 @@ namespace gsc {
 				}
 			}
 		}
-		FS_FreeFileList(files);
+		game::FS_FreeFileList(files);
 
 		// Helper lambda to scan a directory and load matching scripts
 		auto scanDirectory = [&](const std::string& basePath, const std::string& subdir) {

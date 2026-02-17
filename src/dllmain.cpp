@@ -205,6 +205,21 @@ int post_sv_cheats_first() {
     component_loader::post_unpack();
     return cdecl_call<int>(post_sv_cheats_first_addr);
 }
+
+uintptr_t Com_Init_Try_Block_Function_addr;
+
+namespace localization {
+    void LoadNameMap_names();
+}
+
+char Com_Init_Try_Block_Function_stub() {
+
+
+    auto result = cdecl_call<char>(Com_Init_Try_Block_Function_addr);
+    component_loader::post_game_init();
+    return result;
+}
+
 void Init() {
     OpenConsoleAndRedirectIO();
     uint32_t value;
@@ -234,6 +249,15 @@ void Init() {
     Memory::VP::InterceptCall(exe(0x4A3999,0x4C0E20), CG_init_ptr, CG_Init_stub);
 
     Memory::VP::InterceptCall(exe(0x4509AF,0x466524), post_sv_cheats_first_addr, post_sv_cheats_first);
+
+    if (exe(1)) {
+        static auto com_init_end = safetyhook::create_mid(exe(0x42E860), [](SafetyHookContext& ctx) {
+
+            localization::LoadNameMap_names();
+
+            });
+        //Memory::VP::InterceptCall(exe(0x42E8F6), Com_Init_Try_Block_Function_addr, Com_Init_Try_Block_Function_stub);
+    }
 
     auto hunk = exe(0x426AB1 + 1);
     if (hunk) {

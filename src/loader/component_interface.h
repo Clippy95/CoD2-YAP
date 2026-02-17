@@ -14,6 +14,10 @@ public:
 	{
 	}
 
+	virtual void post_game_init()
+	{
+	}
+
 	virtual void post_load()
 	{
 	}

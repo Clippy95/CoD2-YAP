@@ -164,6 +164,9 @@
     <ClCompile Include="src\gsc.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\localization.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <MASM Include="src\include\fpu_ops_x86.asm">
