@@ -48,6 +48,43 @@ namespace render {
 		return result;
 	}
 
+	struct Material_Load {
+		const char* name;
+		uintptr_t material_ptr;
+	};
+
+	uintptr_t postfx_material;
+	uintptr_t RB_DrawStretchPic_addr;
+	int RB_DrawStretchPic(
+		uintptr_t material,
+		unsigned int color,
+		float x,
+		float y,
+		float w,
+		float h,
+		float s0,
+		float t0,
+		float s1,
+		float t1) {
+		int result;
+		__asm {
+			mov eax, material
+			mov ebx,color
+			push t1
+			push s1
+			push t0
+			push s0
+			push h
+			push w
+			push y
+			push x
+			call RB_DrawStretchPic_addr
+			add esp,32
+			mov result,eax
+		}
+		return result;
+	}
+
 	class component final : public component_interface
 	{
 	public:
@@ -105,6 +142,24 @@ namespace render {
 			SafeAreaisModified();
 		}
 		void post_gfx() override {
+
+			if (exe(1)) {
+				CreateMidHook(gfx(0x10017674), [](SafetyHookContext& ctx) {
+
+					postfx_material = game::RegisterMaterial("postfx", 8, 0);
+					printf("postfx_material %p\n", postfx_material);
+
+					});
+
+				RB_DrawStretchPic_addr = gfx(0x1002EC60);
+
+				CreateMidHook(gfx(0x10030FA7), [](SafetyHookContext& ctx) {
+
+					RB_DrawStretchPic(postfx_material, -1, 0.f, 0.f, *(float*)gfx(0x10744C9C), *(float*)gfx(0x10744CA0), 0.f, 0.f, 1.f, 1.f);
+
+					});
+			}
+
 			auto pattern = hook::pattern((HMODULE)gfx_d3d_dll, "68 ? ? ? ? 6A ? A3 ? ? ? ? 68 ? ? ? ? 68");
 
 			if (!pattern.empty()) {

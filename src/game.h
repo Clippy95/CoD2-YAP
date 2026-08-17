@@ -264,6 +264,21 @@ namespace game {
 
 		game::Z_Free(list);
 	}
+	inline 	int CL_RegisterMaterial(const char* material_name, int unk1, int unk2) {
+		return cdecl_call<int>(*(uintptr_t*)0x617AC0, material_name, unk1, unk2);
+	}
+
+	inline 	int RegisterMaterial(const char* material_name, int unk1, int unk2) {
+		auto result = cdecl_call<int>(*(uintptr_t*)0x617AC0, material_name, unk1, unk2);
+		if (exe(1)) {
+			if (gfx(1)) {
+				if (result == *(uintptr_t*)gfx(0x101D1B2C)) {
+					result = NULL;
+				}
+			}
+		}
+		return result;
+	}
 
     enum {
         K_TAB = 9,

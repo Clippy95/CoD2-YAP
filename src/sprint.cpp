@@ -1252,10 +1252,7 @@ void UI_DrawHandlePic_stub(float x, float y, float w, float h, vec4_t* color, vo
 
 	}
 	uint32_t default_material = -1;
-	int CL_RegisterMaterial(const char* material_name, int unk1, int unk2) {
-		return cdecl_call<int>(*(uintptr_t*)0x617AC0, material_name, unk1, unk2);
 
-	}
 	uintptr_t PM_WalkMove_og;
 	int PM_WalkMove(pmove_t* pm, pml_t* pml) {
 		if (pm->ps->pm_flags & PMF_SPRINTING) {
@@ -1371,7 +1368,6 @@ void UI_DrawHandlePic_stub(float x, float y, float w, float h, vec4_t* color, vo
 		printf("  Base: 0x%p, Count: %zu entries\n", new_base, array_count);
 	}
 
-
 	class component final : public component_interface
 	{
 	public:
@@ -1457,8 +1453,8 @@ void UI_DrawHandlePic_stub(float x, float y, float w, float h, vec4_t* color, vo
 			PM_UpdateAimDownSightFlagD = safetyhook::create_inline(exe(0x4DD020), PM_UpdateAimDownSightFlag_stub);
 
 			static auto registering_graphics = safetyhook::create_mid(0x4A2ECE, [](SafetyHookContext& ctx) {
-				default_material = CL_RegisterMaterial("$default", 3, 7);
-				stance_sprint_shader = CL_RegisterMaterial("stance_sprint", 3, 7);
+				//default_material = CL_RegisterMaterial("$default", 3, 7);
+				stance_sprint_shader = game::CL_RegisterMaterial("stance_sprint", 3, 7);
 				if (stance_sprint_shader == default_material)
 					stance_sprint_shader = 0;
 				printf("SPRINTING IS UHHH %d\n", stance_sprint_shader);
